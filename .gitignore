@@ -1,0 +1,16 @@
+# Gradle
+.gradle/
+build/
+out/
+
+# 本地依赖（Chemdah / ArcartX 的商业 jar，不随源码分发）
+libs/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# 系统
+.DS_Store
+Thumbs.db

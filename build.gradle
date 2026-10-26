@@ -1,0 +1,39 @@
+plugins {
+    id 'java'
+}
+
+group = 'com.asterovie.momo'
+version = '1.1.0'
+
+repositories {
+    mavenCentral()
+    maven { url = 'https://repo.papermc.io/repository/maven-public/' }
+}
+
+dependencies {
+    compileOnly 'io.papermc.paper:paper-api:1.20.1-R0.1-SNAPSHOT'
+    // Chemdah 与 ArcartX 为可选依赖：编译期只引用 API，运行期通过反射接入。
+    // 把两个 jar 放到 libs/ 目录即可编译（见 README）。
+    compileOnly fileTree(dir: 'libs', include: ['*.jar'])
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+processResources {
+    filesMatching('plugin.yml') {
+        expand(version: version)
+    }
+}
+
+jar {
+    archiveBaseName = 'StarPact-Plugin'
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+}

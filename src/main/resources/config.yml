@@ -1,0 +1,138 @@
+# 星契 StarPact — Chemdah 任务追踪 HUD
+#
+# 显示方式基于 ArcartX 的 HUD 类型 UI：
+#   · 服务端插件通过 ArcartX API 注册 HUD 并推送任务数据
+#   · Forge / Fabric 客户端只需要安装 ArcartX 客户端模组，不需要另外装模组
+#
+# 本文件是「服务端行为」配置；HUD 的外观（颜色、尺寸、字体）在 jar 内的
+# ui/quest-tracker.yml 里，改外观不需要动这里。
+
+# ─────────────────────────────────────────────────────────────
+# HUD 位置
+# ─────────────────────────────────────────────────────────────
+hud:
+  # 默认锚点。可选值：
+  #   top_left / top_right / bottom_left / bottom_right
+  #   middle_left / middle_right / top_center / bottom_center
+  #
+  # 默认 top_left 是为了贴在星轨小地图的下方。
+  # ⚠️ 这个值要和你客户端的 StarTrail 小地图位置对应：
+  #      startrail.json 的 minimap.position
+  #        0 = 右上角  → 这里填 top_right
+  #        1 = 左上角  → 这里填 top_left   ← 当前
+  #        2 = 左下角  → 这里填 bottom_left
+  #        3 = 右下角  → 这里填 bottom_right
+  anchor: top_left
+
+  # 相对锚点的偏移，单位是 **1920×1080 设计基准下的坐标**（不是实际像素）。
+  #
+  # 当前默认值按「小地图在左上角、size 144、guiScale 3」换算到 1920 基准：
+  #   小地图占 144 * (1920/569) ≈ 486 设计单位高，
+  #   加上坐标文字，HUD 从 y ≈ 420 开始，x = 40（与小地图左边缘对齐）。
+  #
+  # ⚠️ 玩家可以自己用 /sp move 调整，结果按玩家单独保存。
+  # ⚠️ 换分辨率/guiScale 时这些值不用改 —— Adaptive 会自动缩放。
+  offset_x: 5
+  offset_y: 170
+  # 面板宽度（UI 像素）。填「100% 缩放」时的宽度，实际宽度会乘以 scale。
+  width: 380
+
+  # 任务面板整体缩放系数。
+  #
+  # 面板按 1920x1080 的设计空间排版，这个值负责把它映射到实际 UI 坐标空间。
+  # AX 的 UI 单位与窗口像素不是 1:1，所以需要按机器调：
+  #   界面太大 → 调小（如 0.24 / 0.20）
+  #   界面太小 → 调大（如 0.35 / 0.45）
+  # 改完 /sp reload 生效，不用重启。
+  panel-fit: 0.30
+
+  # 默认缩放比例（玩家可在面板「设置」页里调，按玩家单独保存）
+  # 1.0 = 100%；范围受下面 min-scale / max-scale 限制
+  default-scale: 1.0
+  min-scale: 0.6
+  max-scale: 2.0
+  # 是否允许玩家用 /sp move 自己调整位置
+  allow-player-move: true
+
+  # 玩家没有自定义位置时的兜底：显示在默认位置
+  fallback-to-default: true
+
+# ─────────────────────────────────────────────────────────────
+# 显示内容
+# ─────────────────────────────────────────────────────────────
+display:
+  # 最多同时显示几条追踪目标（Chemdah 的追踪上限默认是 3）
+  max-tracks: 3
+
+  # 没有进行中任务时是否隐藏整个面板
+  hide-when-empty: true
+
+  # 是否显示面板标题栏（「任务追踪」那行）
+  show-header: true
+
+  # 进度条显示的字符。保持 ASCII 以免玩家客户端字体缺失。
+  # 进度条长度（字符数）—— 面板宽 200 时 16 个字符约 96px，比较合适
+  bar-length: 16
+  bar-fill: '|'
+  bar-empty: '.'
+
+  # 是否在条目右侧显示 "3/10"
+  show-numbers: true
+
+  # 是否在任务完成时播放提示音（原版音效，无需资源包）
+  completion-sound: true
+
+# ─────────────────────────────────────────────────────────────
+# 刷新策略
+# ─────────────────────────────────────────────────────────────
+refresh:
+  # 轮询间隔（秒）。
+  #
+  # 为什么用轮询而不是监听 Chemdah 事件：
+  #   Chemdah 的事件类继承 taboolib.platform.type.BukkitProxyEvent，
+  #   但那个基类并不在 Chemdah 的 jar 里（由 TabooLib 在运行时注入），
+  #   所以编译期无法 import 它。用轮询反而稳定、不受 Chemdah 版本影响。
+  #
+  # 2 秒意味着「打完怪后最多 2 秒看到进度变化」，对任务 HUD 足够。
+  # 想更实时可以调到 1；服里人多想省性能可以调到 3~5。
+  # 0 = 关闭自动刷新（只在你手动 /sp 操作时更新）。
+  interval-seconds: 2
+
+  # 单个玩家两次推送之间的最小间隔（毫秒），用于合并高频刷新
+  throttle-ms: 250
+
+# ─────────────────────────────────────────────────────────────
+# 任务面板按键
+# ─────────────────────────────────────────────────────────────
+key:
+  # 是否把按键配置写进 ArcartX 的目录。
+  #
+  # 为什么需要这个开关（重要）：
+  #   ArcartX 的 registerClientKeyBind API 只把按键写进服务端内存，
+  #   即使补发 SPackSettings，客户端按键表里也不会出现该按键（实测）。
+  #   所以 StarPact 改为写三份 ArcartX 配置文件，走它自己的加载路径：
+  #     plugins/ArcartX/key_bind/client_key/星契.yml   注册按键
+  #     plugins/ArcartX/key_bind/key_group/星契.yml    监听按键
+  #     plugins/ArcartX/scripts/星契.yml               打开面板
+  #   写完后自动执行一次 arcartx reload。
+  #
+  # 只在文件不存在时写入，不会覆盖你的改动。
+  install-ax-config: true
+
+  # 默认按键（写进 client_key 配置）。
+  # 玩家可以在「选项 → 按键设置 → 星契 StarPact」里改成别的键。
+  default: "J"
+
+# ─────────────────────────────────────────────────────────────
+# 兼容与降级
+# ─────────────────────────────────────────────────────────────
+compat:
+  # ArcartX 不存在时：是否退回到原版 BossBar 显示
+  # （不加这个开关的话，玩家没有 AX 客户端就什么都看不到）
+  fallback-to-bossbar: true
+
+  # 退回 BossBar 时，是否同时写记分板侧边栏（多行任务列表）
+  fallback-to-scoreboard: false
+
+  # 调试：把 HUD 推送的数据打进控制台
+  debug: false

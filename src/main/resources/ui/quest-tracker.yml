@@ -1,0 +1,221 @@
+# 星契 StarPact — 任务追踪 HUD（ArcartX UI 配置）
+#
+# ══════════════════════════════════════════════════════════════
+# 结构：**不使用任何容器嵌套**
+# ══════════════════════════════════════════════════════════════
+# 所有视觉控件直接挂在 controls 下（UI 顶层）。
+#
+# 踩过很多轮的教训：HUD 里把控件套进 Canvas / Adaptive 之后，
+# 服务端改 x/y 不生效（只有顶层控件有效）。
+# 所以每个控件自己带 x/y，服务端按「基准 + 偏移」整体平移。
+#
+# ⚠️ 赋值顺序必须是：**先尺寸、后位置**。
+#   AX 在 height 变化时会重新布局该控件，若位置已设好，
+#   重布局会把位置刷回 YAML 初值 —— 表现为「先闪到默认位置再到目标位置」。
+#
+# ══════════════════════════════════════════════════════════════
+# 缩放
+# ══════════════════════════════════════════════════════════════
+# 缩放由**服务端算好**再下发（zoom 已乘进 w/h/fontSize/x/y），
+# 客户端只做赋值 —— 调缩放逻辑只改 Java，UI 脚本保持简单。
+#
+# ══════════════════════════════════════════════════════════════
+# 其他踩过的坑
+# ══════════════════════════════════════════════════════════════
+# 1) 不要留空字符串 texts（→ Aria COMMA 错误）→ 空行用 '~ '
+# 2) 不要写裸 ~ 当空行（YAML null → NPE）
+# 3) 可点击控件必须有非零 width/height
+# 4) Text 没有 color 属性，改颜色只能改 texts
+# ══════════════════════════════════════════════════════════════
+
+ui:
+  isHud: "true"
+  level: "0"
+  show: "true"
+  defaultOpen: true
+  screenScale: true
+  through: "true"
+
+  packetHandler:
+    sync: |-
+      var.px = packet['x']
+      var.py = packet['y']
+      var.w = packet['w']
+      var.h = packet['h']
+      var.pad = packet['padX']
+      var.top = packet['topPad']
+      var.rowH = packet['rowH']
+      var.gap = packet['rowGap']
+
+      val.panel.width = var.w
+      val.panel.height = var.h
+      val.panel.visible = packet['show']
+      val.panel.x = var.px
+      val.panel.y = var.py
+
+      val.frame.width = var.w
+      val.frame.height = var.h
+      val.frame.x = var.px
+      val.frame.y = var.py
+
+      val.header.width = var.w - var.pad * 2
+      val.header.fontSize = packet['fsTitle']
+      val.header.visible = packet['show']
+      val.header.x = var.px + var.pad
+      val.header.y = var.py + var.top
+
+      val.s0.width = var.w - var.pad * 2
+      val.s0.fontSize = packet['fsBody']
+      val.s0.lineSpace = packet['fsLine']
+      val.s0.visible = packet['v0']
+      val.s0.x = var.px + var.pad
+      val.s0.y = var.py + var.top + var.gap
+      val.s0.texts = [packet['t0'], packet['b0']]
+
+      val.s1.width = var.w - var.pad * 2
+      val.s1.fontSize = packet['fsBody']
+      val.s1.lineSpace = packet['fsLine']
+      val.s1.visible = packet['v1']
+      val.s1.x = var.px + var.pad
+      val.s1.y = var.py + var.top + var.gap + var.rowH
+      val.s1.texts = [packet['t1'], packet['b1']]
+
+      val.s2.width = var.w - var.pad * 2
+      val.s2.fontSize = packet['fsBody']
+      val.s2.lineSpace = packet['fsLine']
+      val.s2.visible = packet['v2']
+      val.s2.x = var.px + var.pad
+      val.s2.y = var.py + var.top + var.gap + var.rowH * 2
+      val.s2.texts = [packet['t2'], packet['b2']]
+
+      val.hint.fontSize = packet['fsHint']
+
+    edit: |-
+      val.hint.visible = true
+      val.frame.visible = true
+
+    editEnd: |-
+      val.hint.visible = false
+      val.frame.visible = false
+
+# ─────────────────────────────────────────────────────────────
+# 控件树：全部是 UI 顶层控件，无容器嵌套。
+# 这里的初始值只是「第一包数据到达之前」的占位，实际由 sync 覆盖。
+# ─────────────────────────────────────────────────────────────
+controls:
+  panel:
+    val: "panel"
+    type: Texture
+    attribute:
+      point: ~top_left
+      visible: false
+      x: 5
+      y: 170
+      width: 380
+      height: 250
+      normal: ~14,16,24,175
+      shape: ~round_rect
+      radius: 8
+
+  frame:
+    val: "frame"
+    type: Texture
+    attribute:
+      point: ~top_left
+      visible: false
+      x: 5
+      y: 170
+      width: 380
+      height: 250
+      visible: false
+      normal: ~0,0,0,0
+      shape: ~round_rect
+      radius: 8
+    effect:
+      stroke:
+        width: 3
+        color: ~96,208,200,220
+
+  header:
+    val: "header"
+    type: Text
+    attribute:
+      point: ~top_left
+      visible: false
+      x: 19
+      y: 182
+      width: 348
+      height: 26
+      fontSize: 20
+      shadow: true
+      texts:
+        - ~&b任务追踪
+
+  s0:
+    val: "s0"
+    type: Text
+    attribute:
+      point: ~top_left
+      visible: false
+      x: 19
+      y: 214
+      width: 348
+      height: 48
+      fontSize: 18
+      lineSpace: 21
+      shadow: true
+      texts:
+        - ~&7暂无追踪任务
+        - '~ '
+
+  s1:
+    val: "s1"
+    type: Text
+    attribute:
+      point: ~top_left
+      visible: false
+      x: 19
+      y: 268
+      width: 348
+      height: 48
+      fontSize: 18
+      lineSpace: 21
+      shadow: true
+      visible: false
+      texts:
+        - '~ '
+        - '~ '
+
+  s2:
+    val: "s2"
+    type: Text
+    attribute:
+      point: ~top_left
+      visible: false
+      x: 19
+      y: 322
+      width: 348
+      height: 48
+      fontSize: 18
+      lineSpace: 21
+      shadow: true
+      visible: false
+      texts:
+        - '~ '
+        - '~ '
+
+  hint:
+    val: "hint"
+    type: Text
+    attribute:
+      point: ~top_left
+      visible: false
+      x: 19
+      y: 376
+      width: 348
+      height: 22
+      fontSize: 15
+      shadow: true
+      visible: false
+      texts:
+        - ~&e拖动调整位置

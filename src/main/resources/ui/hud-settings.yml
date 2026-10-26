@@ -1,0 +1,362 @@
+# 星契 StarPact — HUD 设置面板（HUD 类型，独立于任务面板）
+#
+# 点任务面板里的「打开 HUD 设置」→ 关闭任务面板 + 打开这个 HUD。
+# 这样玩家能同时看到 HUD 和设置项，实时调整。
+#
+# 坐标全部基于 Screen.getWidth()，任何分辨率比例恒定。
+# 尺寸保持正方形/固定比例的控件用同一基准（宽度）。
+#
+# ⚠️ Aria 约定：脚本里不写注释、不用 if 块、布尔发 1/0。
+
+ui:
+  isHud: "true"
+  level: "10"
+  show: "true"
+  defaultOpen: false
+  screenScale: false
+
+  action:
+    open: |-
+      Packet.send('星契:hudset_ready')
+
+  packetHandler:
+    sync: |-
+      val.hs_bg.visible = packet['show']
+      val.hs_title.visible = packet['show']
+      val.hs_close.visible = packet['show']
+      val.hs_l1.visible = packet['show']
+      val.hs_l2.visible = packet['show']
+      val.hs_l3.visible = packet['show']
+      val.hs_l4.visible = packet['show']
+      val.hs_l5.visible = packet['show']
+      val.hs_l6.visible = packet['show']
+      val.hs_b1.visible = packet['show']
+      val.hs_b2.visible = packet['show']
+      val.hs_b3.visible = packet['show']
+      val.hs_b4.visible = packet['show']
+      val.hs_b5.visible = packet['show']
+      val.hs_b6.visible = packet['show']
+      val.hs_v1.visible = packet['show']
+      val.hs_v2.visible = packet['show']
+      val.hs_v1.texts = [packet['v1']]
+      val.hs_v2.texts = [packet['v2']]
+
+  hs_bg:
+    val: "hs_bg"
+    type: Texture
+    attribute:
+      point: ~top_left
+      visible: false
+      x: Screen.getWidth() * 0.5450
+      y: Screen.getWidth() * 0.3000
+      width: Screen.getWidth() * 0.4200
+      height: Screen.getWidth() * 0.5000
+      normal: ~16,20,30,220
+      shape: ~round_rect
+      radius: 8
+    effect:
+      stroke:
+        width: 1
+        color: ~96,208,200,170
+
+  hs_title:
+    val: "hs_title"
+    type: Text
+    attribute:
+      point: ~top_left
+      visible: false
+      x: Screen.getWidth() * 0.5630
+      y: Screen.getWidth() * 0.3180
+      width: Screen.getWidth() * 0.2500
+      height: Screen.getWidth() * 0.0420
+      fontSize: Screen.getWidth() * 0.024
+      texts:
+        - ~&7▎HUD 设置
+
+  hs_close:
+    val: "hs_close"
+    type: Texture
+    attribute:
+      point: ~top_left
+      visible: false
+      x: Screen.getWidth() * 0.9200
+      y: Screen.getWidth() * 0.3140
+      width: Screen.getWidth() * 0.0420
+      height: Screen.getWidth() * 0.0420
+      normal: ~52,30,38,240
+      shape: ~round_rect
+      radius: 4
+      texts:
+        - ~&f×
+      fontSize: Screen.getWidth() * 0.024
+      center: true
+    action:
+      click: |-
+        Packet.send('星契:hudset_close')
+    effect:
+      stroke:
+        width: 1
+        color: ~200,90,100,180
+
+  hs_l1:
+    val: "hs_l1"
+    type: Text
+    attribute:
+      point: ~top_left
+      visible: false
+      x: Screen.getWidth() * 0.5650
+      y: Screen.getWidth() * 0.3850
+      width: Screen.getWidth() * 0.1400
+      height: Screen.getWidth() * 0.0420
+      fontSize: Screen.getWidth() * 0.024
+      texts:
+        - ~&7显示 HUD
+
+  hs_b1:
+    val: "hs_b1"
+    type: Texture
+    attribute:
+      point: ~top_left
+      visible: false
+      x: Screen.getWidth() * 0.7150
+      y: Screen.getWidth() * 0.3790
+      width: Screen.getWidth() * 0.1900
+      height: Screen.getWidth() * 0.0420
+      normal: ~44,50,70,240
+      shape: ~round_rect
+      radius: 4
+      texts:
+        - ~&f显示 / 隐藏
+      fontSize: Screen.getWidth() * 0.024
+      center: true
+    action:
+      click: |-
+        Packet.send('星契:hud_toggle')
+    effect:
+      stroke:
+        width: 1
+        color: ~96,208,200,150
+
+  hs_l2:
+    val: "hs_l2"
+    type: Text
+    attribute:
+      point: ~top_left
+      visible: false
+      x: Screen.getWidth() * 0.5650
+      y: Screen.getWidth() * 0.4450
+      width: Screen.getWidth() * 0.1400
+      height: Screen.getWidth() * 0.0420
+      fontSize: Screen.getWidth() * 0.024
+      texts:
+        - ~&7水平位置
+
+  hs_b2:
+    val: "hs_b2"
+    type: Texture
+    attribute:
+      point: ~top_left
+      visible: false
+      x: Screen.getWidth() * 0.7150
+      y: Screen.getWidth() * 0.4390
+      width: Screen.getWidth() * 0.1900
+      height: Screen.getWidth() * 0.0420
+      normal: ~44,50,70,240
+      shape: ~round_rect
+      radius: 4
+      texts:
+        - ~&f←
+      fontSize: Screen.getWidth() * 0.024
+      center: true
+    action:
+      click: |-
+        Packet.send('星契:hud_move:-40:0')
+    effect:
+      stroke:
+        width: 1
+        color: ~96,208,200,150
+
+  hs_l3:
+    val: "hs_l3"
+    type: Text
+    attribute:
+      point: ~top_left
+      visible: false
+      x: Screen.getWidth() * 0.5650
+      y: Screen.getWidth() * 0.5050
+      width: Screen.getWidth() * 0.1400
+      height: Screen.getWidth() * 0.0420
+      fontSize: Screen.getWidth() * 0.024
+      texts:
+        - ~&7垂直位置
+
+  hs_b3:
+    val: "hs_b3"
+    type: Texture
+    attribute:
+      point: ~top_left
+      visible: false
+      x: Screen.getWidth() * 0.7150
+      y: Screen.getWidth() * 0.4990
+      width: Screen.getWidth() * 0.1900
+      height: Screen.getWidth() * 0.0420
+      normal: ~44,50,70,240
+      shape: ~round_rect
+      radius: 4
+      texts:
+        - ~&f↑
+      fontSize: Screen.getWidth() * 0.024
+      center: true
+    action:
+      click: |-
+        Packet.send('星契:hud_move:0:-40')
+    effect:
+      stroke:
+        width: 1
+        color: ~96,208,200,150
+
+  hs_l4:
+    val: "hs_l4"
+    type: Text
+    attribute:
+      point: ~top_left
+      visible: false
+      x: Screen.getWidth() * 0.5650
+      y: Screen.getWidth() * 0.5650
+      width: Screen.getWidth() * 0.1400
+      height: Screen.getWidth() * 0.0420
+      fontSize: Screen.getWidth() * 0.024
+      texts:
+        - ~&7重置位置
+
+  hs_b4:
+    val: "hs_b4"
+    type: Texture
+    attribute:
+      point: ~top_left
+      visible: false
+      x: Screen.getWidth() * 0.7150
+      y: Screen.getWidth() * 0.5590
+      width: Screen.getWidth() * 0.1900
+      height: Screen.getWidth() * 0.0420
+      normal: ~44,50,70,240
+      shape: ~round_rect
+      radius: 4
+      texts:
+        - ~&f恢复默认
+      fontSize: Screen.getWidth() * 0.024
+      center: true
+    action:
+      click: |-
+        Packet.send('星契:hud_reset')
+    effect:
+      stroke:
+        width: 1
+        color: ~96,208,200,150
+
+  hs_l5:
+    val: "hs_l5"
+    type: Text
+    attribute:
+      point: ~top_left
+      visible: false
+      x: Screen.getWidth() * 0.5650
+      y: Screen.getWidth() * 0.6250
+      width: Screen.getWidth() * 0.1400
+      height: Screen.getWidth() * 0.0420
+      fontSize: Screen.getWidth() * 0.024
+      texts:
+        - ~&7HUD 缩放
+
+  hs_b5:
+    val: "hs_b5"
+    type: Texture
+    attribute:
+      point: ~top_left
+      visible: false
+      x: Screen.getWidth() * 0.7150
+      y: Screen.getWidth() * 0.6190
+      width: Screen.getWidth() * 0.1900
+      height: Screen.getWidth() * 0.0420
+      normal: ~44,50,70,240
+      shape: ~round_rect
+      radius: 4
+      texts:
+        - ~&f-
+      fontSize: Screen.getWidth() * 0.024
+      center: true
+    action:
+      click: |-
+        Packet.send('星契:hud_scale:-10')
+    effect:
+      stroke:
+        width: 1
+        color: ~96,208,200,150
+
+  hs_l6:
+    val: "hs_l6"
+    type: Text
+    attribute:
+      point: ~top_left
+      visible: false
+      x: Screen.getWidth() * 0.5650
+      y: Screen.getWidth() * 0.6850
+      width: Screen.getWidth() * 0.1400
+      height: Screen.getWidth() * 0.0420
+      fontSize: Screen.getWidth() * 0.024
+      texts:
+        - ~&7HUD 宽度
+
+  hs_b6:
+    val: "hs_b6"
+    type: Texture
+    attribute:
+      point: ~top_left
+      visible: false
+      x: Screen.getWidth() * 0.7150
+      y: Screen.getWidth() * 0.6790
+      width: Screen.getWidth() * 0.1900
+      height: Screen.getWidth() * 0.0420
+      normal: ~44,50,70,240
+      shape: ~round_rect
+      radius: 4
+      texts:
+        - ~&f-
+      fontSize: Screen.getWidth() * 0.024
+      center: true
+    action:
+      click: |-
+        Packet.send('星契:hud_w:-40')
+    effect:
+      stroke:
+        width: 1
+        color: ~96,208,200,150
+
+  hs_v1:
+    val: "hs_v1"
+    type: Text
+    attribute:
+      point: ~top_left
+      visible: false
+      x: Screen.getWidth() * 0.9130
+      y: Screen.getWidth() * 0.6250
+      width: Screen.getWidth() * 0.0450
+      height: Screen.getWidth() * 0.0420
+      fontSize: Screen.getWidth() * 0.024
+      texts:
+        - '~ '
+
+  hs_v2:
+    val: "hs_v2"
+    type: Text
+    attribute:
+      point: ~top_left
+      visible: false
+      x: Screen.getWidth() * 0.9130
+      y: Screen.getWidth() * 0.6850
+      width: Screen.getWidth() * 0.0450
+      height: Screen.getWidth() * 0.0420
+      fontSize: Screen.getWidth() * 0.024
+      texts:
+        - '~ '
+

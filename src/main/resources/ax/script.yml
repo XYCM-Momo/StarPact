@@ -1,0 +1,21 @@
+# 星契 StarPact — 按键触发的服务端脚本（ArcartX 脚本）
+#
+# 由 key_group/星契.yml 的 trigger 引用。
+# 作用：按下 J 时让 StarPact 插件打开任务面板。
+#
+# ⚠️ 这里**不能**直接调 ArcartXAPI.getUIRegistry().open(...)：
+# 那样只会打开 UI，不会推送任务数据，客户端就停在 YAML 默认内容
+# （表现为「按 J 出现默认界面」）。
+#
+# 正确做法：执行 /starpact panel 命令，让插件走完整流程
+#   ⚠️ 必须用全称 starpact —— 简写 /sp 已被 StarTrail 插件占用，
+#      用 "sp panel" 会打到 StarTrail 上并报 Invalid sub-command。
+# （open UI + 立刻推数据 + 5tick 后补推）。
+#
+# 脚本里可用的常量：player（触发按键的玩家）
+# PlayerUtils 已在 setting.yml 的 script_imports 里导入。
+
+星契打开面板:
+  type: "normal"
+  script: |
+    PlayerUtils.static.dispatchOpCommand(player, "starpact panel");

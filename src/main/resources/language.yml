@@ -1,0 +1,44 @@
+# 星契 StarPact — 文字文案
+#
+# 支持 & 颜色代码。HUD 面板里的文字（色块、字体）在 ui/quest-tracker.yml，
+# 本文件只管聊天栏 / 命令反馈。
+
+prefix: '&b[星契] &7'
+
+command:
+  help:
+    - '&b◆ 星契 StarPact &7— 任务追踪 HUD + 任务面板'
+    - '&7按 &fJ &7打开任务面板（可在按键设置里改）'
+    - '&7/sp panel &f— 也可以命令打开面板'
+    - '&7/sp toggle &f— 显示 / 隐藏任务追踪 HUD'
+    - '&7/sp move <x> <y> &f— 调整 HUD 位置（像素）'
+    - '&7/sp reset &f— 恢复 HUD 默认位置'
+    - '&7/sp status &f— 查看当前状态'
+    - '&7/sp reload &f— 重载配置 &8(OP)'
+  toggled-on: '&a已显示任务追踪 HUD'
+  toggled-off: '&7已隐藏任务追踪 HUD'
+  moved: '&aHUD 位置已更新：&f({x}, {y})'
+  move-invalid: '&c位置参数无效。用法：/sp move <x> <y>'
+  move-disabled: '&c本服已关闭玩家自行调整 HUD 位置'
+  reset: '&a已恢复默认位置'
+  status:
+    - '&b◆ 星契状态'
+    - '&7  HUD 显示：&f{visible}'
+    - '&7  位置偏移：&f({x}, {y})'
+    - '&7  追踪任务：&f{tracks}'
+    - '&7  ArcartX：&f{ax}'
+    - '&7  Chemdah：&f{ch}'
+  reloaded: '&a配置已重载'
+  no-permission: '&c你没有权限这么做'
+  unknown: '&c未知子命令。输入 &f/sp help &c查看用法'
+  usage-move: '&7用法：&f/sp move <x> <y> &7— 例如 &f/sp move -5 168'
+  not-player: '&c该命令只能由玩家执行'
+
+hud:
+  header: '任务追踪'
+  empty: '暂无追踪任务'
+  no-arCartx: '&7未检测到 ArcartX，任务追踪改用原版显示'
+  finished: '&a目标完成'
+
+bossbar:
+  title: '&b{title} &7{bar} &f{value}/{target}'

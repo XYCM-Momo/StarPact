@@ -1,0 +1,1018 @@
+# 星契 StarPact — 任务面板（全屏 Menu，按 J 打开）
+#
+# 布局：
+#   ┌──────────────────────────────────────────────────┐
+#   │ [时序][间章][残流]  页名            [⚙][×]       │ 顶栏
+#   ├──────────────────────────────────────────────────┤ 分割线
+#   │ 任务列表 │ 任务详情                                │
+#   │          ├──────────────────────────────────────────┤
+#   │          │ 奖励                                     │
+#   └──────────────────────────────────────────────────┘
+#
+# ⚠️ Aria 脚本硬性约定（违反会导致整段脚本被丢弃）
+#   1) 脚本里绝不写注释（// 和 # 都不行）
+#   2) 不用 if 块，用数学运算或拆成多个赋值
+#   3) 动态文本必须用 § 色码，不能带 ~ 前缀、不能用 &
+#   4) 包里的布尔会变字符串 "false"（非空=真）→ 服务端发 1/0
+#   5) 可点击控件必须有非零 width/height
+#   6) normal/x/y 这些属性运行时不可写（只有 alpha/visible/texts/
+#      fontSize/width/height/scale/radius/point 可写）
+#
+# 图标：客户端 resourcepacks/ArcartX/resource/starpact/gui/*.png
+# ══════════════════════════════════════════════════════════
+
+ui:
+  isHud: "false"
+  background: true
+  escClose: true
+  closeDied: true
+  jei: "false"
+  show: "true"
+  screenScale: false
+  defaultOpen: false
+
+  action:
+    open: |-
+      Packet.send('starpact:ready')
+
+  packetHandler:
+    sync: |-
+      val.page_name.texts = [packet['page_name']]
+
+      val.quest_list.texts = packet['quest_lines']
+      val.detail.texts = packet['detail_lines']
+      val.reward.texts = packet['reward_lines']
+      val.tab_shixu_bg.visible = packet['tab_shixu_on']
+      val.tab_jian_bg.visible = packet['tab_jian_on']
+      val.tab_can_bg.visible = packet['tab_can_on']
+      var.ss = packet['show_setting'] + 0
+      val.detail.visible = var.ss < 1
+      val.reward.visible = var.ss < 1
+      val.reward_title.visible = var.ss < 1
+      val.quest_list.visible = var.ss < 1
+      val.line_left.visible = var.ss < 1
+      val.row_uiz.visible = var.ss > 0
+      val.btn_uiz_m.visible = var.ss > 0
+      val.btn_uiz_p.visible = var.ss > 0
+      val.val_uiz.visible = var.ss > 0
+      val.row_content.visible = var.ss > 0
+      val.btn_cont_m.visible = var.ss > 0
+      val.btn_cont_p.visible = var.ss > 0
+      val.val_content.visible = var.ss > 0
+      val.row_left.visible = var.ss > 0
+      val.btn_left_m.visible = var.ss > 0
+      val.btn_left_p.visible = var.ss > 0
+      val.val_left.visible = var.ss > 0
+      val.val_uiz.texts = [packet['set_scale_text']]
+      val.val_content.texts = [packet['set_content_text']]
+      val.val_left.texts = [packet['set_left_text']]
+      var.cs = packet['content_scale'] + 0
+      val.quest_list.fontSize = Screen.getHeight() * 0.0593 * var.cs
+      val.detail.fontSize = Screen.getHeight() * 0.0593 * var.cs
+      val.detail.lineSpace = Screen.getHeight() * 0.0805 * var.cs
+      val.reward.fontSize = Screen.getHeight() * 0.0593 * var.cs
+      val.reward_title.fontSize = Screen.getHeight() * 0.0593 * var.cs
+      val.page_name.fontSize = Screen.getHeight() * 0.0678 * var.cs
+      var.lr = packet['left_ratio'] + 0
+      var.sw2 = Screen.getWidth()
+      val.quest_list.width = var.sw2 * (var.lr - 0.016)
+      val.line_left.x = var.sw2 * var.lr
+      val.detail.x = var.sw2 * (var.lr + 0.014)
+      val.detail.width = var.sw2 * (0.981 - var.lr)
+      val.reward.x = var.sw2 * (var.lr + 0.014)
+      val.reward.width = var.sw2 * (0.981 - var.lr)
+      val.btn_hudmode.visible = var.ss > 0
+      var.hp = packet['hud_panel'] + 0
+      var.hps = var.hp * var.ss
+      val.hp_bg.visible = var.hps > 0
+      val.hp_title.visible = var.hps > 0
+      val.hp_close.visible = var.hps > 0
+      val.hud_display.visible = var.hps > 0
+      val.hud_btn_toggle.visible = var.hps > 0
+      val.hud_scale.visible = var.hps > 0
+      val.hud_btn_sm.visible = var.hps > 0
+      val.hud_btn_sp.visible = var.hps > 0
+      val.hud_val_scale.visible = var.hps > 0
+      val.hud_width.visible = var.hps > 0
+      val.hud_btn_wm.visible = var.hps > 0
+      val.hud_btn_wp.visible = var.hps > 0
+      val.hud_val_w.visible = var.hps > 0
+      val.hud_val_scale.texts = [packet['hud_scale_text']]
+      val.hud_val_w.texts = [packet['hud_w_text']]
+      val.hud_posx.visible = var.hps > 0
+      val.hud_btn_l.visible = var.hps > 0
+      val.hud_btn_r.visible = var.hps > 0
+      val.hud_posy.visible = var.hps > 0
+      val.hud_btn_u.visible = var.hps > 0
+      val.hud_btn_d.visible = var.hps > 0
+      val.hud_reset.visible = var.hps > 0
+      val.hud_btn_rs.visible = var.hps > 0
+
+
+controls:
+
+  bg:
+    type: Texture
+    attribute:
+      point: ~stretch_all
+      x: Screen.getWidth() * 0.0000
+      y: Screen.getHeight() * 0.0000
+      width: Screen.getWidth() * 1.0000
+      height: Screen.getHeight() * 1.0000
+      normal: ~10,12,18,250
+
+  tab_shixu_bg:
+    val: "tab_shixu_bg"
+    type: Texture
+    attribute:
+      point: ~top_left
+      visible: true
+      x: Screen.getWidth() * 0.0130
+      y: Screen.getWidth() * 0.0030
+      width: Screen.getWidth() * 0.0580
+      height: Screen.getWidth() * 0.0580
+      normal: ~38,120,132,200
+      shape: ~round_rect
+      radius: 3
+
+  tab_shixu:
+    type: Texture
+    attribute:
+      point: ~top_left
+      x: Screen.getWidth() * 0.0180
+      y: Screen.getWidth() * 0.0080
+      width: Screen.getWidth() * 0.0480
+      height: Screen.getWidth() * 0.0480
+      normal: ~starpact/gui/tab_shixu.png
+    action:
+      click: |-
+        Packet.send('starpact:page:shixu')
+
+  tab_jian_bg:
+    val: "tab_jian_bg"
+    type: Texture
+    attribute:
+      point: ~top_left
+      visible: false
+      x: Screen.getWidth() * 0.0730
+      y: Screen.getWidth() * 0.0030
+      width: Screen.getWidth() * 0.0580
+      height: Screen.getWidth() * 0.0580
+      normal: ~38,120,132,200
+      shape: ~round_rect
+      radius: 3
+
+  tab_jian:
+    type: Texture
+    attribute:
+      point: ~top_left
+      x: Screen.getWidth() * 0.0780
+      y: Screen.getWidth() * 0.0080
+      width: Screen.getWidth() * 0.0480
+      height: Screen.getWidth() * 0.0480
+      normal: ~starpact/gui/tab_jianzhang.png
+    action:
+      click: |-
+        Packet.send('starpact:page:jian')
+
+  tab_can_bg:
+    val: "tab_can_bg"
+    type: Texture
+    attribute:
+      point: ~top_left
+      visible: false
+      x: Screen.getWidth() * 0.1330
+      y: Screen.getWidth() * 0.0030
+      width: Screen.getWidth() * 0.0580
+      height: Screen.getWidth() * 0.0580
+      normal: ~38,120,132,200
+      shape: ~round_rect
+      radius: 3
+
+  tab_can:
+    type: Texture
+    attribute:
+      point: ~top_left
+      x: Screen.getWidth() * 0.1380
+      y: Screen.getWidth() * 0.0080
+      width: Screen.getWidth() * 0.0480
+      height: Screen.getWidth() * 0.0480
+      normal: ~starpact/gui/tab_canliu.png
+    action:
+      click: |-
+        Packet.send('starpact:page:can')
+
+  page_name:
+    val: "page_name"
+    type: Text
+    attribute:
+      point: ~top_left
+      x: Screen.getWidth() * 0.2200
+      y: Screen.getWidth() * 0.0200
+      width: Screen.getWidth() * 0.4000
+      height: Screen.getWidth() * 0.0400
+      fontSize: Screen.getHeight() * 0.0678
+      shadow: true
+      lineSpace: Screen.getHeight() * 0.0805
+      texts:
+        - ~&f时序
+
+  btn_setting:
+    type: Texture
+    attribute:
+      point: ~top_right
+      x: Screen.getWidth() * -0.0860
+      y: Screen.getWidth() * 0.0100
+      width: Screen.getWidth() * 0.0400
+      height: Screen.getWidth() * 0.0400
+      normal: ~starpact/gui/btn_setting.png
+      hover: ~255,255,255,60
+    action:
+      click: |-
+        Packet.send('starpact:page:setting')
+
+  btn_close:
+    type: Texture
+    attribute:
+      point: ~top_right
+      x: Screen.getWidth() * -0.0340
+      y: Screen.getWidth() * 0.0100
+      width: Screen.getWidth() * 0.0400
+      height: Screen.getWidth() * 0.0400
+      normal: ~starpact/gui/btn_close.png
+      hover: ~255,255,255,60
+    action:
+      click: |-
+        Packet.send('starpact:close')
+
+  content_bg:
+    val: "content_bg"
+    type: Texture
+    attribute:
+      point: ~top_left
+      x: 0
+      y: Screen.getWidth() * 0.0750
+      width: Screen.getWidth() * 1.0000
+      height: Screen.getHeight() - Screen.getWidth() * 0.075
+      normal: ~10,12,18,230
+
+  hp_bg:
+    val: "hp_bg"
+    type: Texture
+    attribute:
+      point: ~top_left
+      visible: false
+      x: Screen.getWidth() * 0.2800
+      y: Screen.getWidth() * 0.1600
+      width: Screen.getWidth() * 0.4400
+      height: Screen.getWidth() * 0.5200
+      normal: ~18,22,32,215
+      shape: ~round_rect
+      radius: 8
+    effect:
+      stroke:
+        width: 1
+        color: ~96,208,200,170
+
+  hp_title:
+    val: "hp_title"
+    type: Text
+    attribute:
+      point: ~top_left
+      visible: false
+      x: Screen.getWidth() * 0.3000
+      y: Screen.getWidth() * 0.1850
+      width: Screen.getWidth() * 0.2500
+      height: Screen.getWidth() * 0.0420
+      fontSize: Screen.getWidth() * 0.0240
+      texts:
+        - ~&7▎HUD 设置
+
+  hp_close:
+    val: "hp_close"
+    type: Texture
+    attribute:
+      point: ~top_left
+      visible: false
+      x: Screen.getWidth() * 0.6850
+      y: Screen.getWidth() * 0.1680
+      width: Screen.getWidth() * 0.0420
+      height: Screen.getWidth() * 0.0420
+      normal: ~52,30,38,240
+      shape: ~round_rect
+      radius: 4
+      texts:
+        - ~&f×
+      fontSize: Screen.getWidth() * 0.0260
+      center: true
+    action:
+      click: |-
+        Packet.send('starpact:hudpanel_close')
+    effect:
+      stroke:
+        width: 1
+        color: ~200,90,100,180
+
+  hud_display:
+    val: "hud_display"
+    type: Text
+    attribute:
+      point: ~top_left
+      visible: false
+      x: Screen.getWidth() * 0.3050
+      y: Screen.getWidth() * 0.2000
+      width: Screen.getWidth() * 0.1600
+      height: Screen.getWidth() * 0.0420
+      fontSize: Screen.getWidth() * 0.0240
+      texts:
+        - ~&7显示 HUD
+
+  hud_btn_toggle:
+    val: "hud_btn_toggle"
+    type: Texture
+    attribute:
+      point: ~top_left
+      visible: false
+      x: Screen.getWidth() * 0.4800
+      y: Screen.getWidth() * 0.2000
+      width: Screen.getWidth() * 0.0800
+      height: Screen.getWidth() * 0.0420
+      normal: ~44,50,70,240
+      shape: ~round_rect
+      radius: 4
+      texts:
+        - ~&f显示 / 隐藏
+      fontSize: Screen.getWidth() * 0.0220
+      center: true
+    action:
+      click: |-
+        Packet.send('starpact:hud_toggle')
+    effect:
+      stroke:
+        width: 1
+        color: ~96,208,200,150
+
+  hud_scale:
+    val: "hud_scale"
+    type: Text
+    attribute:
+      point: ~top_left
+      visible: false
+      x: Screen.getWidth() * 0.3050
+      y: Screen.getWidth() * 0.4000
+      width: Screen.getWidth() * 0.1600
+      height: Screen.getWidth() * 0.0420
+      fontSize: Screen.getWidth() * 0.0240
+      texts:
+        - ~&7HUD 缩放
+
+  hud_btn_sm:
+    val: "hud_btn_sm"
+    type: Texture
+    attribute:
+      point: ~top_left
+      visible: false
+      x: Screen.getWidth() * 0.4800
+      y: Screen.getWidth() * 0.4000
+      width: Screen.getWidth() * 0.0800
+      height: Screen.getWidth() * 0.0420
+      normal: ~44,50,70,240
+      shape: ~round_rect
+      radius: 4
+      texts:
+        - ~&f-
+      fontSize: Screen.getWidth() * 0.0220
+      center: true
+    action:
+      click: |-
+        Packet.send('starpact:hud_scale:-10')
+    effect:
+      stroke:
+        width: 1
+        color: ~96,208,200,150
+
+  hud_btn_sp:
+    val: "hud_btn_sp"
+    type: Texture
+    attribute:
+      point: ~top_left
+      visible: false
+      x: Screen.getWidth() * 0.5280
+      y: Screen.getWidth() * 0.4000
+      width: Screen.getWidth() * 0.0420
+      height: Screen.getWidth() * 0.0420
+      normal: ~44,50,70,240
+      shape: ~round_rect
+      radius: 4
+      texts:
+        - ~&f+
+      fontSize: Screen.getWidth() * 0.0220
+      center: true
+    action:
+      click: |-
+        Packet.send('starpact:hud_scale:10')
+    effect:
+      stroke:
+        width: 1
+        color: ~96,208,200,150
+
+  hud_val_scale:
+    val: "hud_val_scale"
+    type: Text
+    attribute:
+      point: ~top_left
+      visible: false
+      x: Screen.getWidth() * 0.5800
+      y: Screen.getWidth() * 0.4000
+      width: Screen.getWidth() * 0.0900
+      height: Screen.getWidth() * 0.0420
+      fontSize: Screen.getWidth() * 0.0220
+      texts:
+        - '~ '
+
+  hud_width:
+    val: "hud_width"
+    type: Text
+    attribute:
+      point: ~top_left
+      visible: false
+      x: Screen.getWidth() * 0.3050
+      y: Screen.getWidth() * 0.4500
+      width: Screen.getWidth() * 0.1600
+      height: Screen.getWidth() * 0.0420
+      fontSize: Screen.getWidth() * 0.0240
+      texts:
+        - ~&7HUD 宽度
+
+  hud_btn_wm:
+    val: "hud_btn_wm"
+    type: Texture
+    attribute:
+      point: ~top_left
+      visible: false
+      x: Screen.getWidth() * 0.4800
+      y: Screen.getWidth() * 0.4500
+      width: Screen.getWidth() * 0.0800
+      height: Screen.getWidth() * 0.0420
+      normal: ~44,50,70,240
+      shape: ~round_rect
+      radius: 4
+      texts:
+        - ~&f-
+      fontSize: Screen.getWidth() * 0.0220
+      center: true
+    action:
+      click: |-
+        Packet.send('starpact:hud_w:-40')
+    effect:
+      stroke:
+        width: 1
+        color: ~96,208,200,150
+
+  hud_btn_wp:
+    val: "hud_btn_wp"
+    type: Texture
+    attribute:
+      point: ~top_left
+      visible: false
+      x: Screen.getWidth() * 0.5280
+      y: Screen.getWidth() * 0.4500
+      width: Screen.getWidth() * 0.0420
+      height: Screen.getWidth() * 0.0420
+      normal: ~44,50,70,240
+      shape: ~round_rect
+      radius: 4
+      texts:
+        - ~&f+
+      fontSize: Screen.getWidth() * 0.0220
+      center: true
+    action:
+      click: |-
+        Packet.send('starpact:hud_w:40')
+    effect:
+      stroke:
+        width: 1
+        color: ~96,208,200,150
+
+  hud_val_w:
+    val: "hud_val_w"
+    type: Text
+    attribute:
+      point: ~top_left
+      visible: false
+      x: Screen.getWidth() * 0.5800
+      y: Screen.getWidth() * 0.4500
+      width: Screen.getWidth() * 0.0900
+      height: Screen.getWidth() * 0.0420
+      fontSize: Screen.getWidth() * 0.0220
+      texts:
+        - '~ '
+
+  line_top:
+    val: "line_top"
+    type: Texture
+    attribute:
+      point: ~horizontal_stretch_top
+      x: Screen.getWidth() * 0.0000
+      y: Screen.getWidth() * 0.0750
+      width: Screen.getWidth() * 1.0000
+      height: Screen.getHeight() * 0.0042
+      normal: ~96,208,200,110
+
+  quest_list:
+    val: "quest_list"
+    type: Text
+    attribute:
+      point: ~top_left
+      x: Screen.getWidth() * 0.0140
+      y: Screen.getWidth() * 0.0900
+      width: Screen.getWidth() * 0.2760
+      height: Screen.getHeight() * 0.78
+      fontSize: Screen.getHeight() * 0.0593
+      shadow: true
+      lineSpace: Screen.getHeight() * 0.0805
+      texts:
+        - ~&7暂无任务
+
+  line_left:
+    val: "line_left"
+    type: Texture
+    attribute:
+      point: ~vertical_stretch_left
+      x: Screen.getWidth() * 0.3020
+      y: Screen.getWidth() * 0.0850
+      width: Screen.getWidth() * 0.0023
+      height: Screen.getHeight() * 0.80
+      normal: ~96,208,200,90
+
+  detail:
+    val: "detail"
+    type: Text
+    attribute:
+      point: ~top_left
+      x: Screen.getWidth() * 0.3160
+      y: Screen.getWidth() * 0.0900
+      width: Screen.getWidth() * 0.6650
+      height: Screen.getHeight() * 0.62
+      fontSize: Screen.getHeight() * 0.0593
+      shadow: true
+      lineSpace: Screen.getHeight() * 0.0805
+      texts:
+        - ~&7选择一个任务查看详情
+
+  row_content:
+    val: "row_content"
+    type: Text
+    attribute:
+      point: ~top_left
+      visible: false
+      x: Screen.getWidth() * 0.1300
+      y: Screen.getWidth() * 0.1820
+      width: Screen.getWidth() * 0.2700
+      height: Screen.getWidth() * 0.0420
+      fontSize: Screen.getHeight() * 0.0593
+      texts:
+        - ~&7界面缩放
+
+  btn_cont_m:
+    val: "btn_cont_m"
+    type: Texture
+    attribute:
+      point: ~top_left
+      visible: false
+      x: Screen.getWidth() * 0.4200
+      y: Screen.getWidth() * 0.1820
+      width: Screen.getWidth() * 0.0600
+      height: Screen.getWidth() * 0.0420
+      normal: ~38,44,64,235
+      shape: ~round_rect
+      radius: 4
+      texts:
+        - ~&f-
+      fontSize: Screen.getHeight() * 0.0593
+      center: true
+    action:
+      click: |-
+        Packet.send('starpact:content_scale:-10')
+    effect:
+      stroke:
+        width: 1
+        color: ~96,208,200,150
+
+  btn_cont_p:
+    val: "btn_cont_p"
+    type: Texture
+    attribute:
+      point: ~top_left
+      visible: false
+      x: Screen.getWidth() * 0.4880
+      y: Screen.getWidth() * 0.1820
+      width: Screen.getWidth() * 0.0600
+      height: Screen.getWidth() * 0.0420
+      normal: ~38,44,64,235
+      shape: ~round_rect
+      radius: 4
+      texts:
+        - ~&f+
+      fontSize: Screen.getHeight() * 0.0593
+      center: true
+    action:
+      click: |-
+        Packet.send('starpact:content_scale:10')
+    effect:
+      stroke:
+        width: 1
+        color: ~96,208,200,150
+
+  val_content:
+    val: "val_content"
+    type: Text
+    attribute:
+      point: ~top_left
+      visible: false
+      x: Screen.getWidth() * 0.6800
+      y: Screen.getWidth() * 0.1820
+      width: Screen.getWidth() * 0.1500
+      height: Screen.getWidth() * 0.0420
+      fontSize: Screen.getHeight() * 0.0593
+      texts:
+        - '~ '
+
+  row_left:
+    val: "row_left"
+    type: Text
+    attribute:
+      point: ~top_left
+      visible: false
+      x: Screen.getWidth() * 0.1300
+      y: Screen.getWidth() * 0.2340
+      width: Screen.getWidth() * 0.2700
+      height: Screen.getWidth() * 0.0420
+      fontSize: Screen.getHeight() * 0.0593
+      texts:
+        - ~&7左侧栏宽度
+
+  btn_left_m:
+    val: "btn_left_m"
+    type: Texture
+    attribute:
+      point: ~top_left
+      visible: false
+      x: Screen.getWidth() * 0.4200
+      y: Screen.getWidth() * 0.2340
+      width: Screen.getWidth() * 0.0600
+      height: Screen.getWidth() * 0.0420
+      normal: ~38,44,64,235
+      shape: ~round_rect
+      radius: 4
+      texts:
+        - ~&f-
+      fontSize: Screen.getHeight() * 0.0593
+      center: true
+    action:
+      click: |-
+        Packet.send('starpact:left_ratio:-5')
+    effect:
+      stroke:
+        width: 1
+        color: ~96,208,200,150
+
+  btn_left_p:
+    val: "btn_left_p"
+    type: Texture
+    attribute:
+      point: ~top_left
+      visible: false
+      x: Screen.getWidth() * 0.4880
+      y: Screen.getWidth() * 0.2340
+      width: Screen.getWidth() * 0.0600
+      height: Screen.getWidth() * 0.0420
+      normal: ~38,44,64,235
+      shape: ~round_rect
+      radius: 4
+      texts:
+        - ~&f+
+      fontSize: Screen.getHeight() * 0.0593
+      center: true
+    action:
+      click: |-
+        Packet.send('starpact:left_ratio:5')
+    effect:
+      stroke:
+        width: 1
+        color: ~96,208,200,150
+
+  val_left:
+    val: "val_left"
+    type: Text
+    attribute:
+      point: ~top_left
+      visible: false
+      x: Screen.getWidth() * 0.6800
+      y: Screen.getWidth() * 0.2340
+      width: Screen.getWidth() * 0.1500
+      height: Screen.getWidth() * 0.0420
+      fontSize: Screen.getHeight() * 0.0593
+      texts:
+        - '~ '
+
+  btn_hudmode:
+    val: "btn_hudmode"
+    type: Texture
+    attribute:
+      point: ~top_left
+      visible: false
+      x: Screen.getWidth() * 0.1300
+      y: Screen.getWidth() * 0.2860
+      width: Screen.getWidth() * 0.2300
+      height: Screen.getWidth() * 0.0420
+      normal: ~44,90,110,240
+      shape: ~round_rect
+      radius: 4
+      texts:
+        - ~&f打开 HUD 设置
+      fontSize: Screen.getWidth() * 0.0240
+      center: true
+    action:
+      click: |-
+        Packet.send('starpact:hud_edit')
+    effect:
+      stroke:
+        width: Screen.getWidth() * 0.2300
+        color: ~96,208,200,180
+
+  hud_posx:
+    val: "hud_posx"
+    type: Text
+    attribute:
+      point: ~top_left
+      visible: false
+      x: Screen.getWidth() * 0.3050
+      y: Screen.getWidth() * 0.2500
+      width: Screen.getWidth() * 0.1600
+      height: Screen.getWidth() * 0.0420
+      fontSize: Screen.getWidth() * 0.024
+      texts:
+        - ~&7水平位置
+
+  hud_btn_l:
+    val: "hud_btn_l"
+    type: Texture
+    attribute:
+      point: ~top_left
+      visible: false
+      x: Screen.getWidth() * 0.4800
+      y: Screen.getWidth() * 0.2500
+      width: Screen.getWidth() * 0.0420
+      height: Screen.getWidth() * 0.0420
+      normal: ~44,50,70,240
+      shape: ~round_rect
+      radius: 4
+      texts:
+        - ~&f←
+      fontSize: Screen.getWidth() * 0.024
+      center: true
+    action:
+      click: |-
+        Packet.send('starpact:hud_move:-40:0')
+    effect:
+      stroke:
+        width: 1
+        color: ~96,208,200,150
+
+  hud_btn_r:
+    val: "hud_btn_r"
+    type: Texture
+    attribute:
+      point: ~top_left
+      visible: false
+      x: Screen.getWidth() * 0.5280
+      y: Screen.getWidth() * 0.2500
+      width: Screen.getWidth() * 0.0420
+      height: Screen.getWidth() * 0.0420
+      normal: ~44,50,70,240
+      shape: ~round_rect
+      radius: 4
+      texts:
+        - ~&f→
+      fontSize: Screen.getWidth() * 0.024
+      center: true
+    action:
+      click: |-
+        Packet.send('starpact:hud_move:40:0')
+    effect:
+      stroke:
+        width: 1
+        color: ~96,208,200,150
+
+  hud_posy:
+    val: "hud_posy"
+    type: Text
+    attribute:
+      point: ~top_left
+      visible: false
+      x: Screen.getWidth() * 0.3050
+      y: Screen.getWidth() * 0.3000
+      width: Screen.getWidth() * 0.1600
+      height: Screen.getWidth() * 0.0420
+      fontSize: Screen.getWidth() * 0.024
+      texts:
+        - ~&7垂直位置
+
+  hud_btn_u:
+    val: "hud_btn_u"
+    type: Texture
+    attribute:
+      point: ~top_left
+      visible: false
+      x: Screen.getWidth() * 0.4800
+      y: Screen.getWidth() * 0.3000
+      width: Screen.getWidth() * 0.0420
+      height: Screen.getWidth() * 0.0420
+      normal: ~44,50,70,240
+      shape: ~round_rect
+      radius: 4
+      texts:
+        - ~&f↑
+      fontSize: Screen.getWidth() * 0.024
+      center: true
+    action:
+      click: |-
+        Packet.send('starpact:hud_move:0:-40')
+    effect:
+      stroke:
+        width: 1
+        color: ~96,208,200,150
+
+  hud_btn_d:
+    val: "hud_btn_d"
+    type: Texture
+    attribute:
+      point: ~top_left
+      visible: false
+      x: Screen.getWidth() * 0.5280
+      y: Screen.getWidth() * 0.3000
+      width: Screen.getWidth() * 0.0420
+      height: Screen.getWidth() * 0.0420
+      normal: ~44,50,70,240
+      shape: ~round_rect
+      radius: 4
+      texts:
+        - ~&f↓
+      fontSize: Screen.getWidth() * 0.024
+      center: true
+    action:
+      click: |-
+        Packet.send('starpact:hud_move:0:40')
+    effect:
+      stroke:
+        width: 1
+        color: ~96,208,200,150
+
+  hud_reset:
+    val: "hud_reset"
+    type: Text
+    attribute:
+      point: ~top_left
+      visible: false
+      x: Screen.getWidth() * 0.3050
+      y: Screen.getWidth() * 0.3500
+      width: Screen.getWidth() * 0.1600
+      height: Screen.getWidth() * 0.0420
+      fontSize: Screen.getWidth() * 0.024
+      texts:
+        - ~&7重置位置
+
+  hud_btn_rs:
+    val: "hud_btn_rs"
+    type: Texture
+    attribute:
+      point: ~top_left
+      visible: false
+      x: Screen.getWidth() * 0.4800
+      y: Screen.getWidth() * 0.3500
+      width: Screen.getWidth() * 0.0900
+      height: Screen.getWidth() * 0.0420
+      normal: ~44,50,70,240
+      shape: ~round_rect
+      radius: 4
+      texts:
+        - ~&f恢复默认
+      fontSize: Screen.getWidth() * 0.024
+      center: true
+    action:
+      click: |-
+        Packet.send('starpact:hud_reset')
+    effect:
+      stroke:
+        width: 1
+        color: ~96,208,200,150
+
+  reward_title:
+    val: "reward_title"
+    type: Text
+    attribute:
+      point: ~bottom_left
+      x: Screen.getWidth() * 0.3160
+      y: -Screen.getHeight() * 0.155
+      width: Screen.getWidth() * 0.1500
+      height: Screen.getHeight() * 0.0550
+      fontSize: Screen.getHeight() * 0.0593
+      shadow: true
+      lineSpace: Screen.getHeight() * 0.0805
+      texts:
+        - ~&e奖励
+
+  row_uiz:
+    val: "row_uiz"
+    type: Text
+    attribute:
+      point: ~top_left
+      visible: false
+      x: Screen.getWidth() * 0.1300
+      y: Screen.getWidth() * 0.1300
+      width: Screen.getWidth() * 0.2700
+      height: Screen.getWidth() * 0.0420
+      fontSize: Screen.getHeight() * 0.0593
+      texts:
+        - ~&7面板缩放
+
+  btn_uiz_m:
+    val: "btn_uiz_m"
+    type: Texture
+    attribute:
+      point: ~top_left
+      visible: false
+      x: Screen.getWidth() * 0.4200
+      y: Screen.getWidth() * 0.1300
+      width: Screen.getWidth() * 0.0600
+      height: Screen.getWidth() * 0.0420
+      normal: ~38,44,64,235
+      shape: ~round_rect
+      radius: 4
+      texts:
+        - ~&f-
+      fontSize: Screen.getHeight() * 0.0593
+      center: true
+    action:
+      click: |-
+        Packet.send('starpact:ui_scale:-10')
+    effect:
+      stroke:
+        width: Screen.getWidth() * 0.0600
+        color: ~96,208,200,150
+
+  btn_uiz_p:
+    val: "btn_uiz_p"
+    type: Texture
+    attribute:
+      point: ~top_left
+      visible: false
+      x: Screen.getWidth() * 0.4880
+      y: Screen.getWidth() * 0.1300
+      width: Screen.getWidth() * 0.0600
+      height: Screen.getWidth() * 0.0420
+      normal: ~38,44,64,235
+      shape: ~round_rect
+      radius: 4
+      texts:
+        - ~&f+
+      fontSize: Screen.getHeight() * 0.0593
+      center: true
+    action:
+      click: |-
+        Packet.send('starpact:ui_scale:+10')
+    effect:
+      stroke:
+        width: Screen.getWidth() * 0.0600
+        color: ~96,208,200,150
+
+  val_uiz:
+    val: "val_uiz"
+    type: Text
+    attribute:
+      point: ~top_left
+      visible: false
+      x: Screen.getWidth() * 0.6800
+      y: Screen.getWidth() * 0.1300
+      width: Screen.getWidth() * 0.1500
+      height: Screen.getWidth() * 0.0420
+      fontSize: Screen.getHeight() * 0.0593
+      texts:
+        - '~ '
+
+  reward:
+    val: "reward"
+    type: Text
+    attribute:
+      point: ~bottom_left
+      x: Screen.getWidth() * 0.3160
+      y: -Screen.getHeight() * 0.095
+      width: Screen.getWidth() * 0.6650
+      height: Screen.getHeight() * 0.0850
+      fontSize: Screen.getHeight() * 0.0593
+      shadow: true
+      lineSpace: Screen.getHeight() * 0.0805
+      texts:
+        - ~&8完成任务后获得
+

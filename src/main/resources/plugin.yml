@@ -1,0 +1,25 @@
+name: StarPact
+version: '1.1.0'
+main: com.asterovie.momo.starpact.server.StarPactPlugin
+api-version: '1.20'
+authors: ['星野尘梦工作室 · 默默']
+description: 星契 — Chemdah 任务追踪 HUD（ArcartX 界面）
+softdepend: [ArcartX, Chemdah, PlaceholderAPI, Adyeshach]
+
+commands:
+  starpact:
+    description: 星契主命令
+    usage: /<command> <panel|toggle|move|reset|status|reload|help>
+    permission: starpact.command
+    aliases: [sp, pact]
+
+permissions:
+  starpact.command:
+    description: 允许使用星契命令
+    default: true
+  starpact.command.reload:
+    description: 允许重载星契配置
+    default: op
+  starpact.command.admin:
+    description: 允许管理其他玩家的 HUD 位置
+    default: op
