@@ -45,6 +45,102 @@ ui:
       val.tab_shixu_bg.visible = packet['tab_shixu_on']
       val.tab_jian_bg.visible = packet['tab_jian_on']
       val.tab_can_bg.visible = packet['tab_can_on']
+      var.LR_RATIO = packet['left_ratio'] + 0
+      var.ui = packet['ui_scale'] + 0
+
+      var.SW = Screen.getWidth()
+      var.SH = Screen.getHeight()
+
+      var.PAD = var.SW * 0.014
+      var.ICON = var.SW * 0.048
+      var.ICON_GAP = var.SW * 0.012
+      var.TOP_H = var.SW * 0.075
+      var.SMALL = var.SW * 0.040
+      var.BTN_GAP = var.SW * 0.012
+
+      var.TAB1_X = var.PAD
+      var.TAB2_X = var.TAB1_X + var.ICON + var.ICON_GAP
+      var.TAB3_X = var.TAB2_X + var.ICON + var.ICON_GAP
+      var.TAB_Y = var.SW * 0.008
+      var.NAME_X = var.TAB3_X + var.ICON + var.ICON_GAP * 2
+      var.CLOSE_X = var.PAD
+      var.SET_X = var.PAD
+
+      var.LEFT_W = var.SW * var.LR_RATIO
+      var.LIST_X = var.PAD
+      var.DIV_X = var.LIST_X + var.LEFT_W
+      var.DETAIL_X = var.DIV_X + var.PAD
+      var.DETAIL_W = var.SW - var.DETAIL_X - var.PAD
+      var.CONTENT_Y = var.TOP_H + var.SW * 0.015
+      var.CONTENT_H = var.SH - var.CONTENT_Y - var.PAD
+      var.REWARD_H = var.SH * 0.085
+      var.REWARD_Y = var.SH - var.REWARD_H - var.PAD
+      var.RTITLE_Y = var.REWARD_Y - var.SH * 0.060
+      var.DETAIL_H = var.RTITLE_Y - var.CONTENT_Y - var.SW * 0.008
+
+      val.tab_shixu.x = var.TAB1_X
+      val.tab_jian.x = var.TAB2_X
+      val.tab_can.x = var.TAB3_X
+      val.tab_shixu.y = var.TAB_Y
+      val.tab_jian.y = var.TAB_Y
+      val.tab_can.y = var.TAB_Y
+      val.tab_shixu.width = var.ICON
+      val.tab_shixu.height = var.ICON
+      val.tab_jian.width = var.ICON
+      val.tab_jian.height = var.ICON
+      val.tab_can.width = var.ICON
+      val.tab_can.height = var.ICON
+
+      var.BG_PAD = var.ICON * 0.10
+      var.BG_SZ = var.ICON + var.BG_PAD * 2
+      val.tab_shixu_bg.x = var.TAB1_X - var.BG_PAD
+      val.tab_shixu_bg.y = var.TAB_Y - var.BG_PAD
+      val.tab_shixu_bg.width = var.BG_SZ
+      val.tab_shixu_bg.height = var.BG_SZ
+      val.tab_jian_bg.x = var.TAB2_X - var.BG_PAD
+      val.tab_jian_bg.y = var.TAB_Y - var.BG_PAD
+      val.tab_jian_bg.width = var.BG_SZ
+      val.tab_jian_bg.height = var.BG_SZ
+      val.tab_can_bg.x = var.TAB3_X - var.BG_PAD
+      val.tab_can_bg.y = var.TAB_Y - var.BG_PAD
+      val.tab_can_bg.width = var.BG_SZ
+      val.tab_can_bg.height = var.BG_SZ
+      val.tab_shixu.scale = var.ui
+      val.tab_jian.scale = var.ui
+      val.tab_can.scale = var.ui
+
+      val.page_name.x = var.NAME_X
+      val.page_name.y = var.SW * 0.020
+      val.page_name.width = var.SW * 0.400
+
+      val.btn_close.x = -var.PAD
+      val.btn_close.y = var.SW * 0.010
+      val.btn_close.width = var.SMALL
+      val.btn_close.height = var.SMALL
+      val.btn_setting.x = -var.PAD - var.SMALL - var.BTN_GAP
+      val.btn_setting.y = var.SW * 0.010
+      val.btn_setting.width = var.SMALL
+      val.btn_setting.height = var.SMALL
+
+      val.line_top.y = var.TOP_H
+      val.quest_list.x = var.LIST_X
+      val.quest_list.y = var.CONTENT_Y
+      val.quest_list.width = var.LEFT_W - var.PAD
+      val.quest_list.height = var.CONTENT_H
+      val.line_left.x = var.DIV_X
+      val.line_left.y = var.CONTENT_Y
+      val.line_left.height = var.CONTENT_H
+      val.detail.x = var.DETAIL_X
+      val.detail.y = var.CONTENT_Y
+      val.detail.width = var.DETAIL_W
+      val.detail.height = var.DETAIL_H
+      val.reward_title.x = var.DETAIL_X
+      val.reward_title.y = var.RTITLE_Y
+      val.reward.x = var.DETAIL_X
+      val.reward.y = var.REWARD_Y
+      val.reward.width = var.DETAIL_W
+      val.reward.height = var.REWARD_H
+
       var.ss = packet['show_setting'] + 0
       val.detail.visible = var.ss < 1
       val.reward.visible = var.ss < 1
@@ -63,55 +159,28 @@ ui:
       val.btn_left_m.visible = var.ss > 0
       val.btn_left_p.visible = var.ss > 0
       val.val_left.visible = var.ss > 0
+      val.btn_hudmode.visible = var.ss > 0
       val.val_uiz.texts = [packet['set_scale_text']]
       val.val_content.texts = [packet['set_content_text']]
       val.val_left.texts = [packet['set_left_text']]
-      var.cs = packet['content_scale'] + 0
-      val.quest_list.fontSize = Screen.getHeight() * 0.0593 * var.cs
-      val.detail.fontSize = Screen.getHeight() * 0.0593 * var.cs
-      val.detail.lineSpace = Screen.getHeight() * 0.0805 * var.cs
-      val.reward.fontSize = Screen.getHeight() * 0.0593 * var.cs
-      val.reward_title.fontSize = Screen.getHeight() * 0.0593 * var.cs
-      val.page_name.fontSize = Screen.getHeight() * 0.0678 * var.cs
-      var.lr = packet['left_ratio'] + 0
-      var.sw2 = Screen.getWidth()
-      val.quest_list.width = var.sw2 * (var.lr - 0.016)
-      val.line_left.x = var.sw2 * var.lr
-      val.detail.x = var.sw2 * (var.lr + 0.014)
-      val.detail.width = var.sw2 * (0.981 - var.lr)
-      val.reward.x = var.sw2 * (var.lr + 0.014)
-      val.reward.width = var.sw2 * (0.981 - var.lr)
-      val.btn_hudmode.visible = var.ss > 0
-      var.hp = packet['hud_panel'] + 0
-      var.hps = var.hp * var.ss
-      val.hp_bg.visible = var.hps > 0
-      val.hp_title.visible = var.hps > 0
-      val.hp_close.visible = var.hps > 0
-      val.hud_display.visible = var.hps > 0
-      val.hud_btn_toggle.visible = var.hps > 0
-      val.hud_scale.visible = var.hps > 0
-      val.hud_btn_sm.visible = var.hps > 0
-      val.hud_btn_sp.visible = var.hps > 0
-      val.hud_val_scale.visible = var.hps > 0
-      val.hud_width.visible = var.hps > 0
-      val.hud_btn_wm.visible = var.hps > 0
-      val.hud_btn_wp.visible = var.hps > 0
-      val.hud_val_w.visible = var.hps > 0
-      val.hud_val_scale.texts = [packet['hud_scale_text']]
-      val.hud_val_w.texts = [packet['hud_w_text']]
-      val.hud_posx.visible = var.hps > 0
-      val.hud_btn_l.visible = var.hps > 0
-      val.hud_btn_r.visible = var.hps > 0
-      val.hud_posy.visible = var.hps > 0
-      val.hud_btn_u.visible = var.hps > 0
-      val.hud_btn_d.visible = var.hps > 0
-      val.hud_reset.visible = var.hps > 0
-      val.hud_btn_rs.visible = var.hps > 0
+      val.quest_list.scale = var.ui
+      val.detail.scale = var.ui
+      val.reward.scale = var.ui
+      val.reward_title.scale = var.ui
+      val.page_name.scale = var.ui
+      val.btn_setting.scale = var.ui
+      val.btn_close.scale = var.ui
+      val.line_left.scale = var.ui
+
+      var.pa = packet['panel_alpha'] + 0
+      val.bg.alpha = var.pa
+      val.content_bg.alpha = var.pa
 
 
 controls:
 
   bg:
+    val: "bg"
     type: Texture
     attribute:
       point: ~stretch_all
@@ -136,6 +205,7 @@ controls:
       radius: 3
 
   tab_shixu:
+    val: "tab_shixu"
     type: Texture
     attribute:
       point: ~top_left
@@ -144,9 +214,14 @@ controls:
       width: Screen.getWidth() * 0.0480
       height: Screen.getWidth() * 0.0480
       normal: ~starpact/gui/tab_shixu.png
+      hover: ~starpact/gui/tab_shixu.png
     action:
       click: |-
         Packet.send('starpact:page:shixu')
+      enter: |-
+        self.middleScale = 1.18
+      leave: |-
+        self.middleScale = 1.0
 
   tab_jian_bg:
     val: "tab_jian_bg"
@@ -163,6 +238,7 @@ controls:
       radius: 3
 
   tab_jian:
+    val: "tab_jian"
     type: Texture
     attribute:
       point: ~top_left
@@ -171,9 +247,14 @@ controls:
       width: Screen.getWidth() * 0.0480
       height: Screen.getWidth() * 0.0480
       normal: ~starpact/gui/tab_jianzhang.png
+      hover: ~starpact/gui/tab_jianzhang.png
     action:
       click: |-
         Packet.send('starpact:page:jian')
+      enter: |-
+        self.middleScale = 1.18
+      leave: |-
+        self.middleScale = 1.0
 
   tab_can_bg:
     val: "tab_can_bg"
@@ -190,6 +271,7 @@ controls:
       radius: 3
 
   tab_can:
+    val: "tab_can"
     type: Texture
     attribute:
       point: ~top_left
@@ -198,9 +280,14 @@ controls:
       width: Screen.getWidth() * 0.0480
       height: Screen.getWidth() * 0.0480
       normal: ~starpact/gui/tab_canliu.png
+      hover: ~starpact/gui/tab_canliu.png
     action:
       click: |-
         Packet.send('starpact:page:can')
+      enter: |-
+        self.middleScale = 1.18
+      leave: |-
+        self.middleScale = 1.0
 
   page_name:
     val: "page_name"
@@ -218,32 +305,42 @@ controls:
         - ~&f时序
 
   btn_setting:
+    val: "btn_setting"
     type: Texture
     attribute:
       point: ~top_right
-      x: Screen.getWidth() * -0.0860
+      x: Screen.getWidth() * -0.0660
       y: Screen.getWidth() * 0.0100
       width: Screen.getWidth() * 0.0400
       height: Screen.getWidth() * 0.0400
       normal: ~starpact/gui/btn_setting.png
-      hover: ~255,255,255,60
+      hover: ~starpact/gui/btn_setting.png
     action:
       click: |-
         Packet.send('starpact:page:setting')
+      enter: |-
+        self.middleScale = 1.18
+      leave: |-
+        self.middleScale = 1.0
 
   btn_close:
+    val: "btn_close"
     type: Texture
     attribute:
       point: ~top_right
-      x: Screen.getWidth() * -0.0340
+      x: Screen.getWidth() * -0.0140
       y: Screen.getWidth() * 0.0100
       width: Screen.getWidth() * 0.0400
       height: Screen.getWidth() * 0.0400
       normal: ~starpact/gui/btn_close.png
-      hover: ~255,255,255,60
+      hover: ~starpact/gui/btn_close.png
     action:
       click: |-
         Packet.send('starpact:close')
+      enter: |-
+        self.middleScale = 1.18
+      leave: |-
+        self.middleScale = 1.0
 
   content_bg:
     val: "content_bg"
@@ -264,7 +361,7 @@ controls:
       visible: false
       x: Screen.getWidth() * 0.2800
       y: Screen.getWidth() * 0.1600
-      width: Screen.getWidth() * 0.4400
+      width: Screen.getWidth() * 0.4200
       height: Screen.getWidth() * 0.5200
       normal: ~18,22,32,215
       shape: ~round_rect
@@ -321,7 +418,7 @@ controls:
       visible: false
       x: Screen.getWidth() * 0.3050
       y: Screen.getWidth() * 0.2000
-      width: Screen.getWidth() * 0.1600
+      width: Screen.getWidth() * 0.1400
       height: Screen.getWidth() * 0.0420
       fontSize: Screen.getWidth() * 0.0240
       texts:
@@ -335,7 +432,7 @@ controls:
       visible: false
       x: Screen.getWidth() * 0.4800
       y: Screen.getWidth() * 0.2000
-      width: Screen.getWidth() * 0.0800
+      width: Screen.getWidth() * 0.1900
       height: Screen.getWidth() * 0.0420
       normal: ~44,50,70,240
       shape: ~round_rect
@@ -360,7 +457,7 @@ controls:
       visible: false
       x: Screen.getWidth() * 0.3050
       y: Screen.getWidth() * 0.4000
-      width: Screen.getWidth() * 0.1600
+      width: Screen.getWidth() * 0.1400
       height: Screen.getWidth() * 0.0420
       fontSize: Screen.getWidth() * 0.0240
       texts:
@@ -374,7 +471,7 @@ controls:
       visible: false
       x: Screen.getWidth() * 0.4800
       y: Screen.getWidth() * 0.4000
-      width: Screen.getWidth() * 0.0800
+      width: Screen.getWidth() * 0.0600
       height: Screen.getWidth() * 0.0420
       normal: ~44,50,70,240
       shape: ~round_rect
@@ -399,7 +496,7 @@ controls:
       visible: false
       x: Screen.getWidth() * 0.5280
       y: Screen.getWidth() * 0.4000
-      width: Screen.getWidth() * 0.0420
+      width: Screen.getWidth() * 0.0600
       height: Screen.getWidth() * 0.0420
       normal: ~44,50,70,240
       shape: ~round_rect
@@ -424,7 +521,7 @@ controls:
       visible: false
       x: Screen.getWidth() * 0.5800
       y: Screen.getWidth() * 0.4000
-      width: Screen.getWidth() * 0.0900
+      width: Screen.getWidth() * 0.1000
       height: Screen.getWidth() * 0.0420
       fontSize: Screen.getWidth() * 0.0220
       texts:
@@ -438,7 +535,7 @@ controls:
       visible: false
       x: Screen.getWidth() * 0.3050
       y: Screen.getWidth() * 0.4500
-      width: Screen.getWidth() * 0.1600
+      width: Screen.getWidth() * 0.1400
       height: Screen.getWidth() * 0.0420
       fontSize: Screen.getWidth() * 0.0240
       texts:
@@ -452,7 +549,7 @@ controls:
       visible: false
       x: Screen.getWidth() * 0.4800
       y: Screen.getWidth() * 0.4500
-      width: Screen.getWidth() * 0.0800
+      width: Screen.getWidth() * 0.0600
       height: Screen.getWidth() * 0.0420
       normal: ~44,50,70,240
       shape: ~round_rect
@@ -477,7 +574,7 @@ controls:
       visible: false
       x: Screen.getWidth() * 0.5280
       y: Screen.getWidth() * 0.4500
-      width: Screen.getWidth() * 0.0420
+      width: Screen.getWidth() * 0.0600
       height: Screen.getWidth() * 0.0420
       normal: ~44,50,70,240
       shape: ~round_rect
@@ -502,7 +599,7 @@ controls:
       visible: false
       x: Screen.getWidth() * 0.5800
       y: Screen.getWidth() * 0.4500
-      width: Screen.getWidth() * 0.0900
+      width: Screen.getWidth() * 0.1000
       height: Screen.getWidth() * 0.0420
       fontSize: Screen.getWidth() * 0.0220
       texts:
@@ -572,7 +669,7 @@ controls:
       height: Screen.getWidth() * 0.0420
       fontSize: Screen.getHeight() * 0.0593
       texts:
-        - ~&7界面缩放
+        - ~&7面板透明度
 
   btn_cont_m:
     val: "btn_cont_m"
@@ -585,6 +682,7 @@ controls:
       width: Screen.getWidth() * 0.0600
       height: Screen.getWidth() * 0.0420
       normal: ~38,44,64,235
+      hover: ~58,78,110,255
       shape: ~round_rect
       radius: 4
       texts:
@@ -593,7 +691,7 @@ controls:
       center: true
     action:
       click: |-
-        Packet.send('starpact:content_scale:-10')
+        Packet.send('starpact:panel_alpha:-10')
     effect:
       stroke:
         width: 1
@@ -610,6 +708,7 @@ controls:
       width: Screen.getWidth() * 0.0600
       height: Screen.getWidth() * 0.0420
       normal: ~38,44,64,235
+      hover: ~58,78,110,255
       shape: ~round_rect
       radius: 4
       texts:
@@ -618,7 +717,7 @@ controls:
       center: true
     action:
       click: |-
-        Packet.send('starpact:content_scale:10')
+        Packet.send('starpact:panel_alpha:10')
     effect:
       stroke:
         width: 1
@@ -663,6 +762,7 @@ controls:
       width: Screen.getWidth() * 0.0600
       height: Screen.getWidth() * 0.0420
       normal: ~38,44,64,235
+      hover: ~58,78,110,255
       shape: ~round_rect
       radius: 4
       texts:
@@ -688,6 +788,7 @@ controls:
       width: Screen.getWidth() * 0.0600
       height: Screen.getWidth() * 0.0420
       normal: ~38,44,64,235
+      hover: ~58,78,110,255
       shape: ~round_rect
       radius: 4
       texts:
@@ -727,6 +828,7 @@ controls:
       width: Screen.getWidth() * 0.2300
       height: Screen.getWidth() * 0.0420
       normal: ~44,90,110,240
+      hover: ~58,120,145,255
       shape: ~round_rect
       radius: 4
       texts:
@@ -738,7 +840,7 @@ controls:
         Packet.send('starpact:hud_edit')
     effect:
       stroke:
-        width: Screen.getWidth() * 0.2300
+        width: 1
         color: ~96,208,200,180
 
   hud_posx:
@@ -749,7 +851,7 @@ controls:
       visible: false
       x: Screen.getWidth() * 0.3050
       y: Screen.getWidth() * 0.2500
-      width: Screen.getWidth() * 0.1600
+      width: Screen.getWidth() * 0.1400
       height: Screen.getWidth() * 0.0420
       fontSize: Screen.getWidth() * 0.024
       texts:
@@ -763,7 +865,7 @@ controls:
       visible: false
       x: Screen.getWidth() * 0.4800
       y: Screen.getWidth() * 0.2500
-      width: Screen.getWidth() * 0.0420
+      width: Screen.getWidth() * 0.0600
       height: Screen.getWidth() * 0.0420
       normal: ~44,50,70,240
       shape: ~round_rect
@@ -788,7 +890,7 @@ controls:
       visible: false
       x: Screen.getWidth() * 0.5280
       y: Screen.getWidth() * 0.2500
-      width: Screen.getWidth() * 0.0420
+      width: Screen.getWidth() * 0.0600
       height: Screen.getWidth() * 0.0420
       normal: ~44,50,70,240
       shape: ~round_rect
@@ -813,7 +915,7 @@ controls:
       visible: false
       x: Screen.getWidth() * 0.3050
       y: Screen.getWidth() * 0.3000
-      width: Screen.getWidth() * 0.1600
+      width: Screen.getWidth() * 0.1400
       height: Screen.getWidth() * 0.0420
       fontSize: Screen.getWidth() * 0.024
       texts:
@@ -827,7 +929,7 @@ controls:
       visible: false
       x: Screen.getWidth() * 0.4800
       y: Screen.getWidth() * 0.3000
-      width: Screen.getWidth() * 0.0420
+      width: Screen.getWidth() * 0.0600
       height: Screen.getWidth() * 0.0420
       normal: ~44,50,70,240
       shape: ~round_rect
@@ -852,7 +954,7 @@ controls:
       visible: false
       x: Screen.getWidth() * 0.5280
       y: Screen.getWidth() * 0.3000
-      width: Screen.getWidth() * 0.0420
+      width: Screen.getWidth() * 0.0600
       height: Screen.getWidth() * 0.0420
       normal: ~44,50,70,240
       shape: ~round_rect
@@ -877,7 +979,7 @@ controls:
       visible: false
       x: Screen.getWidth() * 0.3050
       y: Screen.getWidth() * 0.3500
-      width: Screen.getWidth() * 0.1600
+      width: Screen.getWidth() * 0.1400
       height: Screen.getWidth() * 0.0420
       fontSize: Screen.getWidth() * 0.024
       texts:
@@ -891,7 +993,7 @@ controls:
       visible: false
       x: Screen.getWidth() * 0.4800
       y: Screen.getWidth() * 0.3500
-      width: Screen.getWidth() * 0.0900
+      width: Screen.getWidth() * 0.1900
       height: Screen.getWidth() * 0.0420
       normal: ~44,50,70,240
       shape: ~round_rect
@@ -948,6 +1050,7 @@ controls:
       width: Screen.getWidth() * 0.0600
       height: Screen.getWidth() * 0.0420
       normal: ~38,44,64,235
+      hover: ~58,78,110,255
       shape: ~round_rect
       radius: 4
       texts:
@@ -959,7 +1062,7 @@ controls:
         Packet.send('starpact:ui_scale:-10')
     effect:
       stroke:
-        width: Screen.getWidth() * 0.0600
+        width: 1
         color: ~96,208,200,150
 
   btn_uiz_p:
@@ -973,6 +1076,7 @@ controls:
       width: Screen.getWidth() * 0.0600
       height: Screen.getWidth() * 0.0420
       normal: ~38,44,64,235
+      hover: ~58,78,110,255
       shape: ~round_rect
       radius: 4
       texts:
@@ -984,7 +1088,7 @@ controls:
         Packet.send('starpact:ui_scale:+10')
     effect:
       stroke:
-        width: Screen.getWidth() * 0.0600
+        width: 1
         color: ~96,208,200,150
 
   val_uiz:

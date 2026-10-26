@@ -3,194 +3,177 @@ package com.asterovie.momo.starpact.server.command;
 import com.asterovie.momo.starpact.server.StarPactPlugin;
 import com.asterovie.momo.starpact.server.model.TrackEntry;
 import com.asterovie.momo.starpact.server.storage.PlayerPrefs;
-import com.asterovie.momo.starpact.server.util.Texts;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 
-/**
- * /sp 命令实现。
- */
-public final class StarPactCommand
-implements CommandExecutor,
-TabCompleter {
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+
+/** /starpact — toggle / move / reset / status / reload / help */
+public final class StarPactCommand implements CommandExecutor, TabCompleter {
+
     private final StarPactPlugin plugin;
 
-    public StarPactCommand(StarPactPlugin starPactPlugin) {
-        this.plugin = starPactPlugin;
+    public StarPactCommand(StarPactPlugin plugin) {
+        this.plugin = plugin;
     }
 
-    public boolean onCommand(CommandSender commandSender, Command command, String string, String[] stringArray) {
-        String string2;
-        if (stringArray.length == 0) {
-            this.help(commandSender);
+    @Override
+    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        if (args.length == 0) {
+            help(sender);
             return true;
         }
-        switch (string2 = stringArray[0].toLowerCase(Locale.ROOT)) {
-            case "help": {
-                this.help(commandSender);
-                break;
-            }
-            case "panel": 
-            case "gui": 
-            case "menu": {
-                this.panel(commandSender);
-                break;
-            }
-            case "toggle": {
-                this.toggle(commandSender);
-                break;
-            }
-            case "move": {
-                this.move(commandSender, stringArray);
-                break;
-            }
-            case "reset": {
-                this.reset(commandSender);
-                break;
-            }
-            case "status": {
-                this.status(commandSender);
-                break;
-            }
-            case "reload": {
-                this.reload(commandSender);
-                break;
-            }
-            default: {
-                this.msg(commandSender, "command.unknown", new String[0]);
-            }
+        String sub = args[0].toLowerCase(Locale.ROOT);
+        switch (sub) {
+            case "help" -> help(sender);
+            case "panel", "gui", "menu" -> panel(sender);
+            case "toggle" -> toggle(sender);
+            case "move" -> move(sender, args);
+            case "reset" -> reset(sender);
+            case "status" -> status(sender);
+            case "reload" -> reload(sender);
+            default -> msg(sender, "command.unknown");
         }
         return true;
     }
 
-    private void panel(CommandSender commandSender) {
-        Player player = this.asPlayer(commandSender);
-        if (player == null) {
+    private void panel(CommandSender sender) {
+        Player p = asPlayer(sender);
+        if (p == null) {
             return;
         }
-        this.plugin.panel().openPanel(player);
+        plugin.panel().openPanel(p);
     }
 
-    private void help(CommandSender commandSender) {
-        for (String string : this.plugin.lang().getStringList("command.help")) {
-            commandSender.sendMessage(Texts.colorize(string));
+    private void help(CommandSender sender) {
+        for (String line : plugin.lang().getStringList("command.help")) {
+            sender.sendMessage(com.asterovie.momo.starpact.server.util.Texts.colorize(line));
         }
     }
 
-    private void toggle(CommandSender commandSender) {
-        Player player = this.asPlayer(commandSender);
-        if (player == null) {
+    private void toggle(CommandSender sender) {
+        Player p = asPlayer(sender);
+        if (p == null) {
             return;
         }
-        PlayerPrefs.Pref pref = this.plugin.prefs().of(player.getUniqueId());
-        boolean bl = !pref.visible;
-        this.plugin.hud().setVisible(player, bl);
-        this.msg(commandSender, bl ? "command.toggled-on" : "command.toggled-off", new String[0]);
+        PlayerPrefs.Pref pref = plugin.prefs().of(p.getUniqueId());
+        boolean next = !pref.visible;
+        plugin.hud().setVisible(p, next);
+        msg(sender, next ? "command.toggled-on" : "command.toggled-off");
     }
 
-    private void move(CommandSender commandSender, String[] stringArray) {
-        int n;
-        int n2;
-        Player player = this.asPlayer(commandSender);
-        if (player == null) {
+    private void move(CommandSender sender, String[] args) {
+        Player p = asPlayer(sender);
+        if (p == null) {
             return;
         }
-        if (!this.plugin.spConfig().allowPlayerMove()) {
-            this.msg(commandSender, "command.move-disabled", new String[0]);
+        if (!plugin.spConfig().allowPlayerMove()) {
+            msg(sender, "command.move-disabled");
             return;
         }
-        if (stringArray.length < 3) {
-            this.msg(commandSender, "command.usage-move", new String[0]);
+        if (args.length < 3) {
+            msg(sender, "command.usage-move");
             return;
         }
+        int x;
+        int y;
         try {
-            n2 = Integer.parseInt(stringArray[1]);
-            n = Integer.parseInt(stringArray[2]);
-        }
-        catch (NumberFormatException numberFormatException) {
-            this.msg(commandSender, "command.move-invalid", new String[0]);
+            x = Integer.parseInt(args[1]);
+            y = Integer.parseInt(args[2]);
+        } catch (NumberFormatException e) {
+            msg(sender, "command.move-invalid");
             return;
         }
-        n2 = Math.max(-4096, Math.min(4096, n2));
-        n = Math.max(-4096, Math.min(4096, n));
-        this.plugin.prefs().setPosition(player.getUniqueId(), n2, n);
-        this.plugin.hud().applyPosition(player);
-        this.msg(commandSender, "command.moved", "x", String.valueOf(n2), "y", String.valueOf(n));
+        // 防止被塞进离谱坐标把 UI 顶到屏幕外
+        x = Math.max(-4096, Math.min(4096, x));
+        y = Math.max(-4096, Math.min(4096, y));
+
+        plugin.prefs().setPosition(p.getUniqueId(), x, y);
+        plugin.hud().applyPosition(p);
+        msg(sender, "command.moved", "x", String.valueOf(x), "y", String.valueOf(y));
     }
 
-    private void reset(CommandSender commandSender) {
-        Player player = this.asPlayer(commandSender);
-        if (player == null) {
+    private void reset(CommandSender sender) {
+        Player p = asPlayer(sender);
+        if (p == null) {
             return;
         }
-        this.plugin.prefs().resetPosition(player.getUniqueId());
-        this.plugin.hud().applyPosition(player);
-        this.msg(commandSender, "command.reset", new String[0]);
+        plugin.prefs().resetPosition(p.getUniqueId());
+        plugin.hud().applyPosition(p);
+        msg(sender, "command.reset");
     }
 
-    private void status(CommandSender commandSender) {
-        Player player = this.asPlayer(commandSender);
-        if (player == null) {
+    private void status(CommandSender sender) {
+        Player p = asPlayer(sender);
+        if (p == null) {
             return;
         }
-        PlayerPrefs.Pref pref = this.plugin.prefs().of(player.getUniqueId());
-        List<TrackEntry> list = this.plugin.chemdah().readTracks(player, this.plugin.spConfig().maxTracks());
-        List<String> list2 = this.plugin.lang().getStringList("command.status");
-        for (String string : list2) {
-            commandSender.sendMessage(Texts.colorize(string.replace("{visible}", pref.visible ? "§a开" : "§7关").replace("{x}", String.valueOf(pref.x)).replace("{y}", String.valueOf(pref.y)).replace("{tracks}", String.valueOf(list.size())).replace("{ax}", this.plugin.ax().available() ? "§a已接入" : "§c未接入").replace("{ch}", this.plugin.chemdah().available() ? "§a已接入" : "§c未接入")));
+        PlayerPrefs.Pref pref = plugin.prefs().of(p.getUniqueId());
+        List<TrackEntry> tracks = plugin.chemdah().readTracks(p, plugin.spConfig().maxTracks());
+        List<String> lines = plugin.lang().getStringList("command.status");
+        for (String line : lines) {
+            sender.sendMessage(com.asterovie.momo.starpact.server.util.Texts.colorize(line
+                    .replace("{visible}", pref.visible ? "\u00a7a\u5f00" : "\u00a77\u5173")
+                    .replace("{x}", String.valueOf(pref.x))
+                    .replace("{y}", String.valueOf(pref.y))
+                    .replace("{tracks}", String.valueOf(tracks.size()))
+                    .replace("{ax}", plugin.ax().available()
+                            ? "\u00a7a\u5df2\u63a5\u5165" : "\u00a7c\u672a\u63a5\u5165")
+                    .replace("{ch}", plugin.chemdah().available()
+                            ? "\u00a7a\u5df2\u63a5\u5165" : "\u00a7c\u672a\u63a5\u5165")));
         }
     }
 
-    private void reload(CommandSender commandSender) {
-        if (!commandSender.hasPermission("starpact.command.reload")) {
-            this.msg(commandSender, "command.no-permission", new String[0]);
+    private void reload(CommandSender sender) {
+        if (!sender.hasPermission("starpact.command.reload")) {
+            msg(sender, "command.no-permission");
             return;
         }
-        this.plugin.reloadAll();
-        this.msg(commandSender, "command.reloaded", new String[0]);
+        plugin.reloadAll();
+        msg(sender, "command.reloaded");
     }
 
-    private Player asPlayer(CommandSender commandSender) {
-        if (commandSender instanceof Player) {
-            Player player = (Player)commandSender;
-            return player;
+    private Player asPlayer(CommandSender sender) {
+        if (sender instanceof Player p) {
+            return p;
         }
-        this.msg(commandSender, "command.not-player", new String[0]);
+        msg(sender, "command.not-player");
         return null;
     }
 
-    private void msg(CommandSender commandSender, String string, String ... stringArray) {
-        String string2 = this.plugin.lang().getString(string, string);
-        int n = 0;
-        while (n + 1 < stringArray.length) {
-            string2 = string2.replace("{" + stringArray[n] + "}", stringArray[n + 1]);
-            n += 2;
+    private void msg(CommandSender sender, String key, String... kv) {
+        String raw = plugin.lang().getString(key, key);
+        for (int i = 0; i + 1 < kv.length; i += 2) {
+            raw = raw.replace("{" + kv[i] + "}", kv[i + 1]);
         }
-        commandSender.sendMessage(Texts.colorize(string2));
+        sender.sendMessage(com.asterovie.momo.starpact.server.util.Texts.colorize(raw));
     }
 
-    public List<String> onTabComplete(CommandSender commandSender, Command command, String string, String[] stringArray) {
-        if (stringArray.length == 1) {
-            ArrayList<String> arrayList = new ArrayList<String>();
-            for (String string2 : List.of("toggle", "move", "reset", "status", "help", "reload")) {
-                if (!string2.startsWith(stringArray[0].toLowerCase(Locale.ROOT)) || "reload".equals(string2) && !commandSender.hasPermission("starpact.command.reload")) continue;
-                arrayList.add(string2);
+    @Override
+    public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+        if (args.length == 1) {
+            List<String> out = new ArrayList<>();
+            for (String s : List.of("toggle", "move", "reset", "status", "help", "reload")) {
+                if (s.startsWith(args[0].toLowerCase(Locale.ROOT))) {
+                    if ("reload".equals(s) && !sender.hasPermission("starpact.command.reload")) {
+                        continue;
+                    }
+                    out.add(s);
+                }
             }
-            return arrayList;
+            return out;
         }
-        if (stringArray.length == 2 && "move".equals(stringArray[0].toLowerCase(Locale.ROOT))) {
+        if (args.length == 2 && "move".equals(args[0].toLowerCase(Locale.ROOT))) {
             return List.of("-5", "-150", "0", "8");
         }
-        if (stringArray.length == 3 && "move".equals(stringArray[0].toLowerCase(Locale.ROOT))) {
+        if (args.length == 3 && "move".equals(args[0].toLowerCase(Locale.ROOT))) {
             return List.of("120", "168", "200");
         }
         return List.of();
     }
 }
-

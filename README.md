@@ -38,7 +38,7 @@ StarPact 是一个**纯服务端插件**，作用是把 Chemdah 的任务系统�
 3. 启动服务端，插件会：
    - 创建 `plugins/StarPact/` 数据目录
    - 释放默认 UI 配置到 `plugins/StarPact/ui/`
-   - 写入 ArcartX 按键配置到 `plugins/ArcartX/key_bind/simple_key/` 与 `plugins/ArcartX/scripts/`
+   - 写入 ArcartX 按键配置到 `plugins/ArcartX/key_bind/client_key/`、`key_group/` 与 `scripts/`
 
 ### 客户端图标
 

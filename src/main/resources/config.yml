@@ -33,9 +33,9 @@ hud:
   # ⚠️ 玩家可以自己用 /sp move 调整，结果按玩家单独保存。
   # ⚠️ 换分辨率/guiScale 时这些值不用改 —— Adaptive 会自动缩放。
   offset_x: 5
-  offset_y: 170
+  offset_y: 490
   # 面板宽度（UI 像素）。填「100% 缩放」时的宽度，实际宽度会乘以 scale。
-  width: 380
+  width: 240
 
   # 任务面板整体缩放系数。
   #
@@ -46,9 +46,12 @@ hud:
   # 改完 /sp reload 生效，不用重启。
   panel-fit: 0.30
 
+  # 面板背景透明度默认值（0.3 ~ 1.0）。0.3 比较通透，能看清后面的 HUD。
+  panel-alpha: 0.30
+
   # 默认缩放比例（玩家可在面板「设置」页里调，按玩家单独保存）
   # 1.0 = 100%；范围受下面 min-scale / max-scale 限制
-  default-scale: 1.0
+  default-scale: 1.90
   min-scale: 0.6
   max-scale: 2.0
   # 是否允许玩家用 /sp move 自己调整位置
@@ -65,7 +68,7 @@ display:
   max-tracks: 3
 
   # 没有进行中任务时是否隐藏整个面板
-  hide-when-empty: true
+  hide-when-empty: false
 
   # 是否显示面板标题栏（「任务追踪」那行）
   show-header: true

@@ -1,67 +1,68 @@
 package com.asterovie.momo.starpact.server.util;
 
+import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.plugin.java.JavaPlugin;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.Reader;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
-import org.bukkit.configuration.Configuration;
-import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.plugin.java.JavaPlugin;
 
 /**
- * language.yml 的加载与读取。
+ * language.yml 的读取与热重载。
+ *
+ * <p>首次启动从 jar 里复制一份到数据目录；之后优先读数据目录那份，
+ * 缺键时回落到 jar 内置的默认值（这样升级插件新增文案不会变成空串）。
  */
 public final class LanguageManager {
+
     private final JavaPlugin plugin;
     private final File file;
     private YamlConfiguration lang;
     private YamlConfiguration defaults;
 
-    public LanguageManager(JavaPlugin javaPlugin) {
-        this.plugin = javaPlugin;
-        this.file = new File(javaPlugin.getDataFolder(), "language.yml");
-        this.loadDefaults();
-        this.reload();
+    public LanguageManager(JavaPlugin plugin) {
+        this.plugin = plugin;
+        this.file = new File(plugin.getDataFolder(), "language.yml");
+        loadDefaults();
+        reload();
     }
 
     private void loadDefaults() {
-        try (InputStream inputStream = this.plugin.getResource("language.yml");){
-            if (inputStream != null) {
-                this.defaults = YamlConfiguration.loadConfiguration((Reader)new InputStreamReader(inputStream, StandardCharsets.UTF_8));
+        try (InputStream in = plugin.getResource("language.yml")) {
+            if (in != null) {
+                defaults = YamlConfiguration.loadConfiguration(
+                        new InputStreamReader(in, StandardCharsets.UTF_8));
             }
-        }
-        catch (IOException iOException) {
-            this.plugin.getLogger().warning("读取内置 language.yml 失败: " + iOException.getMessage());
+        } catch (IOException e) {
+            plugin.getLogger().warning("读取内置 language.yml 失败: " + e.getMessage());
         }
     }
 
     public void reload() {
-        if (!this.file.exists()) {
-            this.plugin.saveResource("language.yml", false);
+        if (!file.exists()) {
+            plugin.saveResource("language.yml", false);
         }
-        this.lang = YamlConfiguration.loadConfiguration((File)this.file);
-        if (this.defaults != null) {
-            this.lang.setDefaults((Configuration)this.defaults);
+        lang = YamlConfiguration.loadConfiguration(file);
+        if (defaults != null) {
+            lang.setDefaults(defaults);
         }
     }
 
-    public String getString(String string, String string2) {
-        if (this.lang == null) {
-            return string2;
+    public String getString(String path, String fallback) {
+        if (lang == null) {
+            return fallback;
         }
-        String string3 = this.lang.getString(string);
-        return string3 == null ? string2 : string3;
+        String v = lang.getString(path);
+        return v == null ? fallback : v;
     }
 
-    public List<String> getStringList(String string) {
-        if (this.lang == null) {
-            return List.of();
+    public java.util.List<String> getStringList(String path) {
+        if (lang == null) {
+            return java.util.List.of();
         }
-        List list = this.lang.getStringList(string);
-        return list == null ? List.of() : list;
+        java.util.List<String> v = lang.getStringList(path);
+        return v == null ? java.util.List.of() : v;
     }
 }
-

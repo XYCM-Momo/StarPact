@@ -3,310 +3,370 @@ package com.asterovie.momo.starpact.server.chemdah;
 import com.asterovie.momo.starpact.server.model.QuestInfo;
 import com.asterovie.momo.starpact.server.model.TrackEntry;
 import com.asterovie.momo.starpact.server.util.Texts;
-import ink.ptms.chemdah.api.ChemdahAPI;
-import ink.ptms.chemdah.core.PlayerProfile;
-import ink.ptms.chemdah.core.quest.Quest;
-import ink.ptms.chemdah.core.quest.QuestContainer;
-import ink.ptms.chemdah.core.quest.Task;
-import ink.ptms.chemdah.core.quest.Template;
-import ink.ptms.chemdah.core.quest.addon.AddonStats;
-import ink.ptms.chemdah.core.quest.addon.AddonTrack;
-import ink.ptms.chemdah.core.quest.meta.MetaName;
-import ink.ptms.chemdah.core.quest.meta.MetaType;
-import ink.ptms.chemdah.core.quest.objective.Progress;
-import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 import org.bukkit.entity.Player;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+
+/**
+ * Chemdah 的实际读取实现。
+ *
+ * <p><b>这个类只有在确认 Chemdah 存在之后才会被加载。</b>
+ * 原因是它直接 import 了 {@code ink.ptms.chemdah.*}，一旦 JVM 解析到这些符号
+ * 而 Chemdah 又没装，就会抛 {@link NoClassDefFoundError} —— 而这个错误
+ * 在类初始化阶段抛出，catch 不住，会把整个插件启用流程打断。
+ *
+ * <p>所以外层 {@link ChemdahHook} 只做「Chemdah 在不在」的判断（纯字符串反射，
+ * 不 import 任何 Chemdah 类），确认在之后才反射式地 new 出本类。
+ */
 final class ChemdahReader {
-    static List<TrackEntry> read(Player player, int n) {
-        ArrayList<TrackEntry> arrayList = new ArrayList<TrackEntry>();
-        if (player == null || n <= 0) {
-            return arrayList;
+
+    /** 由 {@link ChemdahHook} 通过反射调用，因此必须是包可见或 public。 */
+    static List<TrackEntry> read(Player player, int max) {
+        List<TrackEntry> out = new ArrayList<>();
+        if (player == null || max <= 0) {
+            return out;
         }
         try {
-            ChemdahReader.read0(player, n, arrayList);
+            read0(player, max, out);
+        } catch (Throwable t) {
+            player.getServer().getLogger()
+                    .fine("[StarPact] 读取 Chemdah 任务失败: " + t);
         }
-        catch (Throwable throwable) {
-            player.getServer().getLogger().fine("[StarPact] 读取 Chemdah 任务失败: " + String.valueOf(throwable));
-        }
-        return arrayList;
+        return out;
     }
 
-    private static void read0(Player player, int n, List<TrackEntry> list) {
-        Quest quest;
-        PlayerProfile playerProfile = ChemdahAPI.INSTANCE.getChemdahProfile(player);
-        if (playerProfile == null) {
+    private static void read0(Player player, int max, List<TrackEntry> out) {
+        var profile = ink.ptms.chemdah.api.ChemdahAPI.INSTANCE.getChemdahProfile(player);
+        if (profile == null) {
             return;
         }
-        Template template = AddonTrack.Companion.getTrackQuest(playerProfile);
-        ArrayList<Quest> arrayList = new ArrayList<Quest>();
-        if (template != null && (quest = playerProfile.getQuestById(template.getId(), false)) != null && quest.isValid() && !quest.isCompleted()) {
-            arrayList.add(quest);
-        }
-        if (arrayList.isEmpty()) {
-            for (Quest quest2 : playerProfile.getQuests(false)) {
-                if (quest2 == null || !quest2.isValid() || quest2.isCompleted()) continue;
-                arrayList.add(quest2);
+
+        // 1) 玩家主动追踪的任务模板
+        var tracked = ink.ptms.chemdah.core.quest.addon.AddonTrack.Companion.getTrackQuest(profile);
+        List<ink.ptms.chemdah.core.quest.Quest> candidates = new ArrayList<>();
+
+        if (tracked != null) {
+            var q = profile.getQuestById(tracked.getId(), false);
+            if (q != null && q.isValid() && !q.isCompleted()) {
+                candidates.add(q);
             }
         }
-        arrayList.sort(Comparator.comparingLong(Quest::getStartTime));
-        for (Quest quest2 : arrayList) {
-            if (list.size() >= n) break;
-            ChemdahReader.collect(quest2, playerProfile, n, list);
+
+        // 2) 没设追踪 / 追踪的已完成：退回到所有进行中任务
+        if (candidates.isEmpty()) {
+            for (var q : profile.getQuests(false)) {
+                if (q != null && q.isValid() && !q.isCompleted()) {
+                    candidates.add(q);
+                }
+            }
+        }
+
+        candidates.sort(Comparator.comparingLong(ink.ptms.chemdah.core.quest.Quest::getStartTime));
+
+        for (var quest : candidates) {
+            if (out.size() >= max) {
+                break;
+            }
+            collect(quest, profile, max, out);
         }
     }
 
-    private static void collect(Quest quest, PlayerProfile playerProfile, int n, List<TrackEntry> list) {
-        Template template = quest.getTemplate();
+    private static void collect(ink.ptms.chemdah.core.quest.Quest quest,
+                                ink.ptms.chemdah.core.PlayerProfile profile,
+                                int max, List<TrackEntry> out) {
+        var template = quest.getTemplate();
         if (template == null) {
             return;
         }
-        String string = ChemdahReader.nameOf((QuestContainer)template, playerProfile);
-        ArrayList<Task> arrayList = new ArrayList<Task>(quest.getTasks());
-        arrayList.sort(Comparator.comparing(task -> task.isCompleted(playerProfile)).thenComparing(task -> task.getId()));
-        for (Task task2 : arrayList) {
-            if (list.size() >= n) {
+        String questTitle = nameOf(template, profile);
+
+        List<ink.ptms.chemdah.core.quest.Task> tasks = new ArrayList<>(quest.getTasks());
+        tasks.sort(Comparator
+                .comparing((ink.ptms.chemdah.core.quest.Task t) -> t.isCompleted(profile))
+                .thenComparing(ink.ptms.chemdah.core.quest.Task::getId));
+
+        for (var task : tasks) {
+            if (out.size() >= max) {
                 return;
             }
-            boolean bl = task2.isCompleted(playerProfile);
-            Progress progress = ChemdahReader.progressOf(template, task2, playerProfile);
-            String string2 = ChemdahReader.nameOf((QuestContainer)task2, playerProfile);
-            if (string2.isEmpty()) {
-                string2 = string;
+            boolean completed = task.isCompleted(profile);
+            var progress = progressOf(template, task, profile);
+
+            String title = nameOf(task, profile);
+            if (title.isEmpty()) {
+                title = questTitle;
             }
-            double d = 0.0;
-            double d2 = 0.0;
-            double d3 = 0.0;
+
+            double value = 0, target = 0, percent = 0;
             if (progress != null) {
-                d = ChemdahReader.asDouble(progress.getValue());
-                d2 = ChemdahReader.asDouble(progress.getTarget());
-                d3 = progress.getPercent();
-                if (d2 > 0.0 && d > d2) {
-                    d = d2;
+                value = asDouble(progress.getValue());
+                target = asDouble(progress.getTarget());
+                percent = progress.getPercent();
+                if (target > 0 && value > target) {
+                    value = target;
                 }
-                if (d3 <= 0.0 && d2 > 0.0) {
-                    d3 = Math.min(1.0, d / d2);
+                if (percent <= 0 && target > 0) {
+                    percent = Math.min(1.0, value / target);
                 }
             }
-            d3 = Math.max(0.0, Math.min(1.0, d3));
-            list.add(new TrackEntry(quest.getId(), task2.getId(), string2, Texts.strip(string2), d, d2, d3, bl));
+            percent = Math.max(0, Math.min(1, percent));
+
+            out.add(new TrackEntry(
+                    quest.getId(), task.getId(), title, Texts.strip(title),
+                    value, target, percent, completed));
         }
     }
 
-    private static Progress progressOf(Template template, Task task, PlayerProfile playerProfile) {
-        Progress progress = ChemdahReader.tryProgress((QuestContainer)task, playerProfile);
-        if (progress != null) {
-            return progress;
+    private static ink.ptms.chemdah.core.quest.objective.Progress progressOf(
+            ink.ptms.chemdah.core.quest.Template template,
+            ink.ptms.chemdah.core.quest.Task task,
+            ink.ptms.chemdah.core.PlayerProfile profile) {
+        var p = tryProgress(task, profile);
+        if (p != null) {
+            return p;
         }
-        return ChemdahReader.tryProgress((QuestContainer)template, playerProfile);
+        return tryProgress(template, profile);
     }
 
-    private static Progress tryProgress(QuestContainer questContainer, PlayerProfile playerProfile) {
+    private static ink.ptms.chemdah.core.quest.objective.Progress tryProgress(
+            ink.ptms.chemdah.core.quest.QuestContainer container,
+            ink.ptms.chemdah.core.PlayerProfile profile) {
         try {
-            CompletableFuture completableFuture = AddonStats.Companion.getProgress(questContainer, playerProfile);
-            if (completableFuture == null) {
+            var future = ink.ptms.chemdah.core.quest.addon.AddonStats.Companion
+                    .getProgress(container, profile);
+            if (future == null) {
                 return null;
             }
-            if (completableFuture.isDone()) {
-                return completableFuture.getNow(null);
+            if (future.isDone()) {
+                return future.getNow(null);
             }
-            return (Progress)completableFuture.get(50L, TimeUnit.MILLISECONDS);
-        }
-        catch (Throwable throwable) {
+            return future.get(50, TimeUnit.MILLISECONDS);
+        } catch (Throwable t) {
             return null;
         }
     }
 
-    private static String nameOf(QuestContainer questContainer, PlayerProfile playerProfile) {
+    private static String nameOf(ink.ptms.chemdah.core.quest.QuestContainer container,
+                                 ink.ptms.chemdah.core.PlayerProfile profile) {
         try {
-            String string = MetaName.Companion.displayName(questContainer, false, playerProfile);
-            return string == null ? "" : string;
-        }
-        catch (Throwable throwable) {
+            String n = ink.ptms.chemdah.core.quest.meta.MetaName.Companion
+                    .displayName(container, false, profile);
+            return n == null ? "" : n;
+        } catch (Throwable t) {
             return "";
         }
     }
 
+    // ═══════════════════════════════════════════════════════════
+    // 完整任务列表（面板用）
+    // ═══════════════════════════════════════════════════════════
+
+    /**
+     * 读取玩家「接取中」的所有任务，含分类、描述、目标、奖励。
+     *
+     * <p>分类映射：Chemdah 的 meta.type 字符串 → shixu / jian / can。
+     * 匹配规则按关键字（大小写不敏感）：
+     * <pre>
+     *   主线/时序/main      → shixu   时序
+     *   支线/间章/side      → jian    间章
+     *   每日/活动/限时/daily → can     残流
+     *   其他                → shixu   （兜底放进时序，避免任务看不到）
+     * </pre>
+     */
     static List<QuestInfo> readQuests(Player player) {
-        ArrayList<QuestInfo> arrayList = new ArrayList<QuestInfo>();
+        List<QuestInfo> out = new ArrayList<>();
         if (player == null) {
-            return arrayList;
+            return out;
         }
         try {
-            PlayerProfile playerProfile = ChemdahAPI.INSTANCE.getChemdahProfile(player);
-            if (playerProfile == null) {
-                return arrayList;
+            var profile = ink.ptms.chemdah.api.ChemdahAPI.INSTANCE.getChemdahProfile(player);
+            if (profile == null) {
+                return out;
             }
-            for (Quest quest : playerProfile.getQuests(false)) {
-                if (quest == null || !quest.isValid() || quest.isCompleted()) continue;
+            for (var quest : profile.getQuests(false)) {
+                if (quest == null || !quest.isValid() || quest.isCompleted()) {
+                    continue;
+                }
                 try {
-                    arrayList.add(ChemdahReader.toInfo(quest, playerProfile));
-                }
-                catch (Throwable throwable) {
-                    player.getServer().getLogger().fine("[StarPact] 读取任务 " + quest.getId() + " 失败: " + String.valueOf(throwable));
+                    out.add(toInfo(quest, profile));
+                } catch (Throwable t) {
+                    player.getServer().getLogger()
+                            .fine("[StarPact] 读取任务 " + quest.getId() + " 失败: " + t);
                 }
             }
-            arrayList.sort(Comparator.comparingLong(questInfo -> 0L));
+            out.sort(Comparator.comparingLong(q -> {
+                // 稳定排序：按接取时间（早的在前）—— 需要从原 Quest 取，这里用 id 兜底
+                return 0L;
+            }));
+        } catch (Throwable t) {
+            player.getServer().getLogger().fine("[StarPact] 读取任务列表失败: " + t);
         }
-        catch (Throwable throwable) {
-            player.getServer().getLogger().fine("[StarPact] 读取任务列表失败: " + String.valueOf(throwable));
-        }
-        return arrayList;
+        return out;
     }
 
-    private static QuestInfo toInfo(Quest quest, PlayerProfile playerProfile) {
-        Template template = quest.getTemplate();
-        String string = quest.getId();
-        String string2 = template != null ? ChemdahReader.nameOf((QuestContainer)template, playerProfile) : string;
-        String string3 = string2;
-        if (string2.isEmpty()) {
-            string2 = string;
+    private static QuestInfo toInfo(ink.ptms.chemdah.core.quest.Quest quest,
+                                    ink.ptms.chemdah.core.PlayerProfile profile) {
+        var template = quest.getTemplate();
+        String id = quest.getId();
+        String name = template != null ? nameOf(template, profile) : id;
+        if (name.isEmpty()) {
+            name = id;
         }
-        String string4 = ChemdahReader.categoryOf(template);
-        List<String> list = ChemdahReader.descriptionOf(template);
-        ArrayList<QuestInfo.Objective> arrayList = new ArrayList<QuestInfo.Objective>();
-        for (Task task : quest.getTasks()) {
-            boolean bl = task.isCompleted(playerProfile);
-            Progress progress = ChemdahReader.progressOf(template, task, playerProfile);
-            double d = 0.0;
-            double d2 = 0.0;
-            double d3 = 0.0;
-            if (progress != null) {
-                d = ChemdahReader.asDouble(progress.getValue());
-                d2 = ChemdahReader.asDouble(progress.getTarget());
-                d3 = progress.getPercent();
-                if (d2 > 0.0 && d > d2) {
-                    d = d2;
+        String category = categoryOf(template);
+        List<String> desc = descriptionOf(template);
+
+        List<QuestInfo.Objective> objs = new ArrayList<>();
+        for (var task : quest.getTasks()) {
+            boolean done = task.isCompleted(profile);
+            var prog = progressOf(template, task, profile);
+            double v = 0, tgt = 0, pct = 0;
+            if (prog != null) {
+                v = asDouble(prog.getValue());
+                tgt = asDouble(prog.getTarget());
+                pct = prog.getPercent();
+                if (tgt > 0 && v > tgt) {
+                    v = tgt;
                 }
-                if (d3 <= 0.0 && d2 > 0.0) {
-                    d3 = Math.min(1.0, d / d2);
+                if (pct <= 0 && tgt > 0) {
+                    pct = Math.min(1.0, v / tgt);
                 }
             }
-            d3 = Math.max(0.0, Math.min(1.0, d3));
-            String string5 = ChemdahReader.nameOf((QuestContainer)task, playerProfile);
-            if (string5.isEmpty()) {
-                string5 = task.getId();
+            pct = Math.max(0, Math.min(1, pct));
+            String tname = nameOf(task, profile);
+            if (tname.isEmpty()) {
+                tname = task.getId();
             }
-            arrayList.add(new QuestInfo.Objective(task.getId(), string5, d, d2, d3, bl));
+            objs.add(new QuestInfo.Objective(task.getId(), tname, v, tgt, pct, done));
         }
-        arrayList.sort(Comparator.comparing(QuestInfo.Objective::completed).thenComparing(QuestInfo.Objective::id));
-        List<QuestInfo.Reward> list2 = ChemdahReader.rewardsOf(template);
-        return new QuestInfo(string, string2, string4, list, arrayList, list2);
+        objs.sort(Comparator.comparing(QuestInfo.Objective::completed)
+                .thenComparing(QuestInfo.Objective::id));
+
+        List<QuestInfo.Reward> rewards = rewardsOf(template);
+        return new QuestInfo(id, name, category, desc, objs, rewards);
     }
 
-    private static String categoryOf(Template template) {
+    /** meta.type → shixu / jian / can */
+    private static String categoryOf(ink.ptms.chemdah.core.quest.Template template) {
         if (template == null) {
             return "shixu";
         }
         try {
-            List list = MetaType.Companion.type(template);
-            if (list != null) {
-                for (String string : list) {
-                    if (string == null) continue;
-                    String string2 = string.toLowerCase(Locale.ROOT);
-                    if (string2.contains("支线") || string2.contains("间章") || string2.contains("side")) {
+            List<String> types = ink.ptms.chemdah.core.quest.meta.MetaType.Companion.type(template);
+            if (types != null) {
+                for (String ty : types) {
+                    if (ty == null) {
+                        continue;
+                    }
+                    String s = ty.toLowerCase(java.util.Locale.ROOT);
+                    if (s.contains("支线") || s.contains("间章") || s.contains("side")) {
                         return "jian";
                     }
-                    if (string2.contains("每日") || string2.contains("活动") || string2.contains("限时") || string2.contains("daily") || string2.contains("event")) {
+                    if (s.contains("每日") || s.contains("活动") || s.contains("限时")
+                            || s.contains("daily") || s.contains("event")) {
                         return "can";
                     }
-                    if (!string2.contains("主线") && !string2.contains("时序") && !string2.contains("main")) continue;
-                    return "shixu";
+                    if (s.contains("主线") || s.contains("时序") || s.contains("main")) {
+                        return "shixu";
+                    }
                 }
             }
-        }
-        catch (Throwable throwable) {
-            // empty catch block
+        } catch (Throwable ignored) {
+            // fallthrough
         }
         return "shixu";
     }
 
-    private static List<String> descriptionOf(Template template) {
-        ArrayList<String> arrayList = new ArrayList<String>();
+    /** 读 addon.ui.description（Chemdah 的任务描述约定位置） */
+    private static List<String> descriptionOf(ink.ptms.chemdah.core.quest.Template template) {
+        List<String> out = new ArrayList<>();
         if (template == null) {
-            return arrayList;
+            return out;
         }
         try {
-            Object v;
-            HashMap hashMap = template.getAddonMap();
-            if (hashMap != null && (v = hashMap.get("ui")) != null) {
-                Method method = v.getClass().getMethod("getDescription", new Class[0]);
-                Object object = method.invoke(v, new Object[0]);
-                if (object instanceof List) {
-                    List list = (List)object;
-                    for (Object e : list) {
-                        arrayList.add(String.valueOf(e));
+            var addons = template.getAddonMap();
+            if (addons != null) {
+                Object ui = addons.get("ui");
+                if (ui != null) {
+                    var m = ui.getClass().getMethod("getDescription");
+                    Object v = m.invoke(ui);
+                    if (v instanceof List<?> list) {
+                        for (Object o : list) {
+                            out.add(String.valueOf(o));
+                        }
+                    } else if (v instanceof String s) {
+                        out.add(s);
                     }
-                } else if (object instanceof String) {
-                    String string = (String)object;
-                    arrayList.add(string);
                 }
             }
+        } catch (Throwable ignored) {
+            // 没有 ui addon 就没有描述
         }
-        catch (Throwable throwable) {
-            // empty catch block
-        }
-        return arrayList;
+        return out;
     }
 
-    private static List<QuestInfo.Reward> rewardsOf(Template template) {
-        ArrayList<QuestInfo.Reward> arrayList = new ArrayList<QuestInfo.Reward>();
+    /**
+     * 读奖励。
+     *
+     * <p>Chemdah 的奖励写在 agent 里（Kether 脚本），没有结构化数据可读。
+     * 这里只读 {@code addon.reward} 或 {@code addon.arcartx-view.rewards} 这类
+     * 显式配置；读不到就返回空（面板显示「完成任务后由任务脚本发放」）。
+     */
+    private static List<QuestInfo.Reward> rewardsOf(ink.ptms.chemdah.core.quest.Template template) {
+        List<QuestInfo.Reward> out = new ArrayList<>();
         if (template == null) {
-            return arrayList;
+            return out;
         }
         try {
-            Object object = template.getClass().getMethod("getConfig", new Class[0]).invoke((Object)template, new Object[0]);
-            if (object == null) {
-                return arrayList;
+            // ⚠️ 不能写 `var cfg = template.getConfig()` —— getConfig() 的返回类型是
+            // ink.ptms.chemdah.taboolib.library.configuration.ConfigurationSection，
+            // 而那个类**不在 Chemdah 的 jar 里**（由 TabooLib 运行时注入），
+            // 直接引用会导致编译失败（同类问题还有 BukkitProxyEvent）。
+            // 所以这里全程用反射 + Object，不绑定该类型。
+            Object cfg = template.getClass().getMethod("getConfig").invoke(template);
+            if (cfg == null) {
+                return out;
             }
-            Object object2 = object.getClass().getMethod("getConfigurationSection", String.class).invoke(object, "addon.reward");
-            if (object2 == null) {
-                return arrayList;
+            Object sec = cfg.getClass()
+                    .getMethod("getConfigurationSection", String.class)
+                    .invoke(cfg, "addon.reward");
+            if (sec == null) {
+                return out;
             }
-            Object object3 = object2.getClass().getMethod("getKeys", Boolean.TYPE).invoke(object2, false);
-            if (!(object3 instanceof Set)) {
-                return arrayList;
+            Object keysObj = sec.getClass().getMethod("getKeys", boolean.class)
+                    .invoke(sec, false);
+            if (!(keysObj instanceof java.util.Set<?> keys)) {
+                return out;
             }
-            Set set = (Set)object3;
-            Method method = object2.getClass().getMethod("getString", String.class, String.class);
-            for (Object e : set) {
-                String string = String.valueOf(e);
-                Object object4 = method.invoke(object2, string + ".name", string);
-                Object object5 = method.invoke(object2, string + ".amount", "");
-                arrayList.add(new QuestInfo.Reward(String.valueOf(object4), String.valueOf(object5)));
+            var getStr = sec.getClass().getMethod("getString", String.class, String.class);
+            for (Object k : keys) {
+                String key = String.valueOf(k);
+                Object nm = getStr.invoke(sec, key + ".name", key);
+                Object am = getStr.invoke(sec, key + ".amount", "");
+                out.add(new QuestInfo.Reward(String.valueOf(nm), String.valueOf(am)));
             }
+        } catch (Throwable ignored) {
+            // 没有奖励配置
         }
-        catch (Throwable throwable) {
-            // empty catch block
-        }
-        return arrayList;
+        return out;
     }
 
-    private static double asDouble(Object object) {
-        if (object instanceof Number) {
-            Number number = (Number)object;
-            return number.doubleValue();
+    private static double asDouble(Object o) {
+        if (o instanceof Number n) {
+            return n.doubleValue();
         }
-        if (object != null) {
+        if (o != null) {
             try {
-                return Double.parseDouble(String.valueOf(object));
-            }
-            catch (NumberFormatException numberFormatException) {
-                // empty catch block
+                return Double.parseDouble(String.valueOf(o));
+            } catch (NumberFormatException ignored) {
+                // ignore
             }
         }
-        return 0.0;
+        return 0;
     }
 
     private ChemdahReader() {
     }
 }
-

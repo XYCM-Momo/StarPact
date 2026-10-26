@@ -2,8 +2,12 @@ plugins {
     id 'java'
 }
 
+// ── 版本号唯一来源：src/main/resources/plugin.yml 里的 version ──
+// （和 VERSIONING.md 的约定一致：插件版本写在 plugin.yml，不在这里手改）
+def pluginYmlFile = file('src/main/resources/plugin.yml')
+def versionMatcher = pluginYmlFile.text =~ /(?m)^version:\s*['"]?([^'"\s]+)['"]?\s*$/
+version = versionMatcher.find() ? versionMatcher.group(1) : '0.0.0'
 group = 'com.asterovie.momo'
-version = '1.1.0'
 
 repositories {
     mavenCentral()
@@ -11,15 +15,16 @@ repositories {
 }
 
 dependencies {
-    compileOnly 'io.papermc.paper:paper-api:1.20.1-R0.1-SNAPSHOT'
-    // Chemdah 与 ArcartX 为可选依赖：编译期只引用 API，运行期通过反射接入。
-    // 把两个 jar 放到 libs/ 目录即可编译（见 README）。
+    compileOnly "io.papermc.paper:paper-api:1.20.1-R0.1-SNAPSHOT"
+    // Chemdah / ArcartX 都是闭源插件，公共仓库里没有。
+    // 把对应的 jar 放进 libs/ 即可编译（compileOnly，不会打包进我们的 jar）。
     compileOnly fileTree(dir: 'libs', include: ['*.jar'])
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
 }
 
 tasks.withType(JavaCompile).configureEach {
@@ -36,4 +41,10 @@ jar {
     archiveBaseName = 'StarPact-Plugin'
     preserveFileTimestamps = false
     reproducibleFileOrder = true
+    manifest {
+        attributes(
+            'Implementation-Title': 'StarPact',
+            'Implementation-Version': project.version
+        )
+    }
 }

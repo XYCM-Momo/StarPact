@@ -5,192 +5,31 @@ import com.asterovie.momo.starpact.server.config.SpConfig;
 import com.asterovie.momo.starpact.server.model.QuestInfo;
 import com.asterovie.momo.starpact.server.storage.PlayerPrefs;
 import com.asterovie.momo.starpact.server.util.Texts;
+import org.bukkit.entity.Player;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import org.bukkit.entity.Player;
 
 /**
  * 任务面板（全屏 Menu）的数据渲染。
+ *
+ * <p>布局：顶栏（三个分类图标 + 页名 + 设置/关闭）→ 左栏任务列表 →
+ * 右栏任务详情 → 底部奖励区。
+ *
+ * <p>所有文本由服务端拼好下发，Aria 只做赋值 —— 避免在脚本里写循环和条件。
  */
 public final class PanelRenderer {
-    public static final String UI_ID = "menu/星契面板";
+
+    public static final String UI_ID = "starpact:quest_panel";
+    /** HUD 设置面板（HUD 类型，独立于任务面板） */
     public static final String HUD_SETTINGS_UI_ID = "starpact:hud_settings";
-    private final StarPactPlugin plugin;
-    private final Map<UUID, Page> pages = new ConcurrentHashMap<UUID, Page>();
-    private final Set<UUID> hudPanel = ConcurrentHashMap.newKeySet();
-    private final Map<UUID, String> selected = new ConcurrentHashMap<UUID, String>();
 
-    public boolean hudPanelOpen(Player player) {
-        return this.hudPanel.contains(player.getUniqueId());
-    }
-
-    public void setHudPanel(Player player, boolean bl) {
-        if (bl) {
-            this.hudPanel.add(player.getUniqueId());
-        } else {
-            this.hudPanel.remove(player.getUniqueId());
-        }
-    }
-
-    public PanelRenderer(StarPactPlugin starPactPlugin) {
-        this.plugin = starPactPlugin;
-    }
-
-    public Page pageOf(Player player) {
-        return this.pages.getOrDefault(player.getUniqueId(), Page.SHIXU);
-    }
-
-    public void setPage(Player player, Page page) {
-        this.pages.put(player.getUniqueId(), page);
-    }
-
-    public String selectedOf(Player player) {
-        return this.selected.get(player.getUniqueId());
-    }
-
-    public void setSelected(Player player, String string) {
-        if (string == null) {
-            this.selected.remove(player.getUniqueId());
-        } else {
-            this.selected.put(player.getUniqueId(), string);
-        }
-    }
-
-    public void forget(UUID uUID) {
-        this.pages.remove(uUID);
-        this.selected.remove(uUID);
-        this.hudPanel.remove(uUID);
-    }
-
-    public Map<String, Object> buildPacket(Player player) {
-        QuestInfo questInfo = null;
-        SpConfig spConfig = this.plugin.spConfig();
-        PlayerPrefs.Pref pref = this.plugin.prefs().of(player.getUniqueId());
-        Page page = this.pageOf(player);
-        List<QuestInfo> list = this.plugin.chemdah().readQuests(player);
-        HashMap<String, Object> hashMap = new HashMap<String, Object>();
-        double d = pref.uiScale <= 0.0 ? 1.0 : pref.uiScale;
-        hashMap.put("fit", spConfig.panelFit());
-        hashMap.put("ui_scale", d);
-        hashMap.put("hud_panel", this.hudPanelOpen(player) ? 1 : 0);
-        hashMap.put("hud_scale_text", "§f" + Math.round(pref.scale * 100.0) + "%");
-        hashMap.put("hud_w_text", "§f" + (pref.hudW > 0 ? pref.hudW : spConfig.width()));
-        hashMap.put("set_scale_text", "§f" + Math.round(pref.uiScale * 100.0) + "%");
-        hashMap.put("set_content_text", "§f" + Math.round(pref.contentScale * 100.0) + "%");
-        hashMap.put("set_left_text", "§f" + Math.round(pref.leftRatio * 100.0) + "%");
-        hashMap.put("left_ratio", pref.leftRatio);
-        hashMap.put("content_scale", pref.contentScale);
-        hashMap.put("page_name", "§l" + page.title + "  §8- " + (String)(page == Page.SETTING ? "HUD 与面板设置" : page.title + "任务"));
-        hashMap.put("tab_shixu_on", page == Page.SHIXU ? 1 : 0);
-        hashMap.put("tab_jian_on", page == Page.JIAN ? 1 : 0);
-        hashMap.put("tab_can_on", page == Page.CAN ? 1 : 0);
-        if (page == Page.SETTING) {
-            hashMap.put("quest_lines", List.of("§7设置项"));
-            hashMap.put("detail_lines", this.settingLines(spConfig, pref));
-            hashMap.put("reward_lines", List.of("§8-"));
-            hashMap.put("has_sel", 0);
-            hashMap.put("show_setting", 1);
-            hashMap.put("val_scale", "§f" + Math.round(pref.scale * 100.0) + "%");
-            hashMap.put("val_w", "§f" + (pref.hudW > 0 ? pref.hudW : spConfig.width()));
-            hashMap.put("val_uiz", "§f" + Math.round(d * 100.0) + "%");
-            return hashMap;
-        }
-        hashMap.put("show_setting", 0);
-        ArrayList<QuestInfo> arrayList = new ArrayList<QuestInfo>();
-        for (QuestInfo object : list) {
-            if (!page.key.equals(object.category())) continue;
-            arrayList.add(object);
-        }
-        ArrayList arrayList2 = new ArrayList();
-        if (arrayList.isEmpty()) {
-            arrayList2.add("§8暂无" + page.title + "任务");
-        } else {
-            for (QuestInfo questInfo2 : arrayList) {
-                String string = questInfo2.id().equals(this.selectedOf(player)) ? "§b▸ " : "§8▸ ";
-                arrayList2.add(string + "§f" + Texts.ellipsis(questInfo2.name(), 20) + "  §7" + questInfo2.progressText());
-            }
-        }
-        hashMap.put("quest_lines", arrayList2);
-        for (QuestInfo questInfo3 : arrayList) {
-            if (!questInfo3.id().equals(this.selectedOf(player))) continue;
-            questInfo = questInfo3;
-            break;
-        }
-        if (questInfo == null) {
-            hashMap.put("has_sel", 0);
-            hashMap.put("detail_lines", List.of("§8从左侧选择一个任务"));
-            hashMap.put("reward_lines", List.of("§8-"));
-        } else {
-            hashMap.put("has_sel", 1);
-            hashMap.put("detail_lines", this.detailLines(questInfo));
-            hashMap.put("reward_lines", this.rewardLines(questInfo));
-        }
-        return hashMap;
-    }
-
-    private List<String> detailLines(QuestInfo questInfo) {
-        ArrayList<String> arrayList = new ArrayList<String>();
-        arrayList.add("§f§l" + Texts.ellipsis(questInfo.name(), 40));
-        arrayList.add("");
-        for (String object : questInfo.description()) {
-            arrayList.add("§7" + object);
-        }
-        if (!questInfo.description().isEmpty()) {
-            arrayList.add("");
-        }
-        arrayList.add("§8目标");
-        for (QuestInfo.Objective objective : questInfo.objectives()) {
-            String string = objective.completed() ? "§a✔" : "§b▪";
-            arrayList.add(string + " §f" + Texts.ellipsis(objective.name(), 28));
-            arrayList.add("   " + this.bar(objective.percent(), 14, objective.completed()) + " §7" + objective.numbers());
-        }
-        return arrayList;
-    }
-
-    private List<String> rewardLines(QuestInfo questInfo) {
-        ArrayList<String> arrayList = new ArrayList<String>();
-        if (questInfo.rewards().isEmpty()) {
-            arrayList.add("§8该任务没有配置奖励预览");
-            arrayList.add("§8（实际奖励由任务脚本发放）");
-            return arrayList;
-        }
-        for (QuestInfo.Reward reward : questInfo.rewards()) {
-            String string = reward.amount() == null || reward.amount().isEmpty() ? "" : " §e" + reward.amount();
-            arrayList.add("§f▪ " + reward.name() + string);
-        }
-        return arrayList;
-    }
-
-    private List<String> settingLines(SpConfig spConfig, PlayerPrefs.Pref pref) {
-        ArrayList<String> arrayList = new ArrayList<String>();
-        arrayList.add("§fHUD 状态：  " + (pref.visible ? "§a已开启" : "§8已关闭"));
-        arrayList.add("§fHUD 缩放：  §f" + Math.round(pref.scale * 100.0) + "%");
-        arrayList.add("§fHUD 宽度：  §f" + (pref.hudW > 0 ? pref.hudW : spConfig.width()));
-        arrayList.add("§f面板缩放：  §f" + Math.round(pref.uiScale * 100.0) + "%");
-        arrayList.add("");
-        arrayList.add("§8用 /sp 命令调整：toggle / move / reset / scale");
-        return arrayList;
-    }
-
-    private String bar(double d, int n, boolean bl) {
-        int n2 = (int)Math.round(Math.max(0.0, Math.min(1.0, d)) * (double)n);
-        if (bl) {
-            n2 = n;
-        }
-        StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder.append(bl ? "§a" : "§b");
-        for (int i = 0; i < n; ++i) {
-            stringBuilder.append(i < n2 ? (char)'|' : '.');
-        }
-        return stringBuilder.toString();
-    }
-
-    public static enum Page {
+    /** 页面分类 */
+    public enum Page {
         SHIXU("shixu", "时序", "&b"),
         JIAN("jian", "间章", "&d"),
         CAN("can", "残流", "&e"),
@@ -200,22 +39,228 @@ public final class PanelRenderer {
         public final String title;
         public final String color;
 
-        private Page(String string2, String string3, String string4) {
-            this.key = string2;
-            this.title = string3;
-            this.color = string4;
+        Page(String key, String title, String color) {
+            this.key = key;
+            this.title = title;
+            this.color = color;
         }
 
-        public static Page of(String string) {
-            if (string == null) {
+        public static Page of(String key) {
+            if (key == null) {
                 return SHIXU;
             }
-            for (Page page : Page.values()) {
-                if (!page.key.equalsIgnoreCase(string)) continue;
-                return page;
+            for (Page p : values()) {
+                if (p.key.equalsIgnoreCase(key)) {
+                    return p;
+                }
             }
             return SHIXU;
         }
     }
-}
 
+    private final StarPactPlugin plugin;
+    private final Map<UUID, Page> pages = new ConcurrentHashMap<>();
+    /** 玩家在左栏选中的任务 ID；没有 = 未选中 */
+    /** 玩家是否打开了 HUD 设置小面板 */
+    private final java.util.Set<UUID> hudPanel = java.util.concurrent.ConcurrentHashMap.newKeySet();
+
+    public boolean hudPanelOpen(Player p) {
+        return hudPanel.contains(p.getUniqueId());
+    }
+
+    public void setHudPanel(Player p, boolean open) {
+        if (open) {
+            hudPanel.add(p.getUniqueId());
+        } else {
+            hudPanel.remove(p.getUniqueId());
+        }
+    }
+
+    private final Map<UUID, String> selected = new ConcurrentHashMap<>();
+
+    public PanelRenderer(StarPactPlugin plugin) {
+        this.plugin = plugin;
+    }
+
+    public Page pageOf(Player p) {
+        return pages.getOrDefault(p.getUniqueId(), Page.SHIXU);
+    }
+
+    public void setPage(Player p, Page page) {
+        pages.put(p.getUniqueId(), page);
+    }
+
+    public String selectedOf(Player p) {
+        return selected.get(p.getUniqueId());
+    }
+
+    public void setSelected(Player p, String questId) {
+        if (questId == null) {
+            selected.remove(p.getUniqueId());
+        } else {
+            selected.put(p.getUniqueId(), questId);
+        }
+    }
+
+    public void forget(UUID id) {
+        pages.remove(id);
+        selected.remove(id);
+        hudPanel.remove(id);
+    }
+
+    /**
+     * 构造推送包。
+     */
+    public Map<String, Object> buildPacket(Player player) {
+        SpConfig cfg = plugin.spConfig();
+        PlayerPrefs.Pref pref = plugin.prefs().of(player.getUniqueId());
+        Page page = pageOf(player);
+        List<QuestInfo> quests = plugin.chemdah().readQuests(player);
+
+        Map<String, Object> p = new HashMap<>();
+
+        // 面板整体缩放 = fit * ui_scale（两者都在客户端相乘）。
+        //
+        // fit 来自 config.yml 的 panel-fit，是把 1920x1080 的设计空间
+        // 映射到实际 UI 坐标空间的系数。AX 的 UI 单位跟窗口像素不是 1:1
+        // （实测差得挺多），所以这个值需要按机器调，做成配置项最省事。
+        double uiScale = pref.uiScale <= 0 ? 1.0 : pref.uiScale;
+        p.put("fit", cfg.panelFit());
+        p.put("ui_scale", uiScale);
+        p.put("hud_panel", hudPanelOpen(player) ? 1 : 0);
+        p.put("hud_scale_text", "\u00a7f" + Math.round(pref.scale * 100) + "%");
+        p.put("hud_w_text", "\u00a7f" + (pref.hudW > 0 ? pref.hudW : cfg.width()));
+        p.put("set_scale_text", "\u00a7f" + Math.round(pref.uiScale * 100) + "%");
+        p.put("set_content_text", "\u00a7f" + Math.round(pref.panelAlpha * 100) + "%");
+        p.put("set_left_text", "\u00a7f" + Math.round(pref.leftRatio * 100) + "%");
+        p.put("left_ratio", pref.leftRatio);
+        p.put("panel_alpha", pref.panelAlpha);
+
+        // 页名
+        p.put("page_name", "\u00a7l" + page.title
+                + "  \u00a78- " + (page == Page.SETTING ? "HUD 与面板设置" : page.title + "任务"));
+
+        // 页签高亮
+        p.put("tab_shixu_on", page == Page.SHIXU ? 1 : 0);
+        p.put("tab_jian_on", page == Page.JIAN ? 1 : 0);
+        p.put("tab_can_on", page == Page.CAN ? 1 : 0);
+
+        if (page == Page.SETTING) {
+            p.put("quest_lines", List.of("\u00a77设置项"));
+            // 设置页不显示摘要：所有设置项都是可交互控件，发文本会残留在界面上
+            p.put("detail_lines", List.of("\u00a7r"));
+            p.put("reward_lines", List.of("\u00a78-"));
+            p.put("has_sel", 0);
+            // 设置页显示可交互的设置行
+            p.put("show_setting", 1);
+            p.put("val_scale", "\u00a7f" + Math.round(pref.scale * 100) + "%");
+            p.put("val_w", "\u00a7f" + (pref.hudW > 0 ? pref.hudW : cfg.width()));
+            p.put("val_uiz", "\u00a7f" + Math.round(uiScale * 100) + "%");
+            return p;
+        }
+        p.put("show_setting", 0);
+
+        // 左栏：按分类过滤
+        List<QuestInfo> filtered = new ArrayList<>();
+        for (QuestInfo q : quests) {
+            if (page.key.equals(q.category())) {
+                filtered.add(q);
+            }
+        }
+
+        // 左栏文本
+        List<String> listLines = new ArrayList<>();
+        if (filtered.isEmpty()) {
+            listLines.add("\u00a78暂无" + page.title + "任务");
+        } else {
+            for (QuestInfo q : filtered) {
+                String sel = q.id().equals(selectedOf(player))
+                        ? "\u00a7b\u25b8 " : "\u00a78\u25b8 ";
+                listLines.add(sel + "\u00a7f" + Texts.ellipsis(q.name(), 20)
+                        + "  \u00a77" + q.progressText());
+            }
+        }
+        p.put("quest_lines", listLines);
+
+        // 右栏：选中任务详情
+        QuestInfo cur = null;
+        for (QuestInfo q : filtered) {
+            if (q.id().equals(selectedOf(player))) {
+                cur = q;
+                break;
+            }
+        }
+        if (cur == null) {
+            p.put("has_sel", 0);
+            p.put("detail_lines", List.of("\u00a78从左侧选择一个任务"));
+            p.put("reward_lines", List.of("\u00a78-"));
+        } else {
+            p.put("has_sel", 1);
+            p.put("detail_lines", detailLines(cur));
+            p.put("reward_lines", rewardLines(cur));
+        }
+        return p;
+    }
+
+    /** 详情区：名称 + 描述 + 各目标进度 */
+    private List<String> detailLines(QuestInfo q) {
+        List<String> out = new ArrayList<>();
+        out.add("\u00a7f\u00a7l" + Texts.ellipsis(q.name(), 40));
+        out.add("");
+        for (String d : q.description()) {
+            out.add("\u00a77" + d);
+        }
+        if (!q.description().isEmpty()) {
+            out.add("");
+        }
+        out.add("\u00a78目标");
+        for (QuestInfo.Objective o : q.objectives()) {
+            String mark = o.completed() ? "\u00a7a\u2714" : "\u00a7b\u25aa";
+            out.add(mark + " \u00a7f" + Texts.ellipsis(o.name(), 28));
+            out.add("   " + bar(o.percent(), 14, o.completed()) + " \u00a77" + o.numbers());
+        }
+        return out;
+    }
+
+    /** 奖励区 */
+    private List<String> rewardLines(QuestInfo q) {
+        List<String> out = new ArrayList<>();
+        if (q.rewards().isEmpty()) {
+            out.add("\u00a78该任务没有配置奖励预览");
+            out.add("\u00a78（实际奖励由任务脚本发放）");
+            return out;
+        }
+        for (QuestInfo.Reward r : q.rewards()) {
+            String amt = r.amount() == null || r.amount().isEmpty()
+                    ? "" : " \u00a7e" + r.amount();
+            out.add("\u00a7f\u25aa " + r.name() + amt);
+        }
+        return out;
+    }
+
+    /** 设置页内容 */
+    private List<String> settingLines(SpConfig cfg, PlayerPrefs.Pref pref) {
+        List<String> out = new ArrayList<>();
+        out.add("\u00a7fHUD 状态：  " + (pref.visible ? "\u00a7a已开启" : "\u00a78已关闭"));
+        out.add("\u00a7fHUD 缩放：  \u00a7f" + Math.round(pref.scale * 100) + "%");
+        out.add("\u00a7fHUD 宽度：  \u00a7f" + (pref.hudW > 0 ? pref.hudW : cfg.width()));
+        out.add("\u00a7f面板缩放：  \u00a7f" + Math.round(pref.uiScale * 100) + "%");
+        out.add("");
+        out.add("\u00a78用 /sp 命令调整：toggle / move / reset / scale");
+        return out;
+    }
+
+    /** 进度条 */
+    private String bar(double percent, int len, boolean completed) {
+        int filled = (int) Math.round(Math.max(0, Math.min(1, percent)) * len);
+        if (completed) {
+            filled = len;
+        }
+        StringBuilder sb = new StringBuilder();
+        sb.append(completed ? "\u00a7a" : "\u00a7b");
+        for (int i = 0; i < len; i++) {
+            sb.append(i < filled ? '|' : '.');
+        }
+        return sb.toString();
+    }
+}

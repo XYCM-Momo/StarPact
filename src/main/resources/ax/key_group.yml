@@ -1,22 +1,15 @@
-# 星契 StarPact — 任务面板按键组（ArcartX 按键组）
+# 星契 StarPact — 按键组（ArcartX key_group）
 #
-# 这个文件由 StarPact 插件在启用时自动生成到 plugins/ArcartX/key_bind/key_group/。
-# 它监听上面 client_key/星契.yml 注册的「星契任务面板」按键，
-# 按下时执行服务端脚本打开面板 UI。
+# 监听 client_key 注册的「星契任务面板」按键，按下时执行下面的 trigger。
 #
-# 为什么用「配置文件 + 按键组」而不是插件里调 registerClientKeyBind：
-#   实测 registerClientKeyBind 只往服务端的内存 map 写，
-#   即使补发 SPackSettings 也不会在客户端重建按键（按键始终不出现）。
-#   走配置文件是 ArcartX 自己的加载路径，稳定可用。
-#
-# 脚本用的是 ArcartX 的服务端 JS（Nashorn），
-# script_imports 里已导入 ArcartXAPI -> priv.seventeen.artist.arcartx.api.ArcartXAPI
+# interval（毫秒）：两次触发之间的最短间隔。
+#   client_key 是「按住持续触发」型，不加间隔会导致按一下 J 连开好几次面板。
+#   300ms 足够吸收连发（正常按键间隔 50~100ms），又不影响「关掉面板马上再开」。
+#   代码里还有一层 400ms 防抖，双重保险。
 
-星契任务面板:
+星契任务面板组:
   keys:
     - "星契任务面板"
-  interval: 100
+  interval: 300
   trigger:
     - "星契打开面板"
-
-# 上面 trigger 引用的是一条「普通脚本」，定义见 scripts/星契.yml

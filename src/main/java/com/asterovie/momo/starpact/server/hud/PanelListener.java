@@ -10,125 +10,118 @@ import priv.seventeen.artist.arcartx.event.client.ClientMenuCloseEvent;
 
 /**
  * 监听 ArcartX 客户端发来的自定义包，驱动面板交互。
- * <b>本类直接 import 了 ArcartX 类</b>，所以只在确认 ArcartX 存在时才注册
- * （见 PanelListenerRegistrar）。
+ *
+ * <p>⚠️ 这个类直接 import 了 ArcartX 的类，所以**只在确认 ArcartX 存在时才注册**
+ * （见 StarPactPlugin）。否则会像 Chemdah 那样在类解析阶段抛
+ * NoClassDefFoundError。注册逻辑用反射包一层，见 {@link PanelListenerRegistrar}。
  */
-public final class PanelListener
-implements Listener {
-    public static final String PREFIX = "星契:";
+public final class PanelListener implements Listener {
+
+    /**
+     * UI 里发的包 ID 前缀。
+     *
+     * <p>动作一律编码在 ID 里（如 {@code starpact:page:shixu}），不依赖 data 参数 ——
+     * 实测 {@code Packet.send(id, arg)} 的第二个参数在服务端未必能稳定取到，
+     * 而 {@code event.getId()} 是可靠的。
+     */
+    public static final String PREFIX = "starpact:";
+
     private final StarPactPlugin plugin;
 
-    public PanelListener(StarPactPlugin starPactPlugin) {
-        this.plugin = starPactPlugin;
+    public PanelListener(StarPactPlugin plugin) {
+        this.plugin = plugin;
     }
 
-    @EventHandler(priority=EventPriority.NORMAL)
-    public void onCustomPacket(ClientCustomPacketEvent clientCustomPacketEvent) {
-        String string;
-        Player player = clientCustomPacketEvent.getPlayer();
+    @EventHandler(priority = EventPriority.NORMAL)
+    public void onCustomPacket(ClientCustomPacketEvent event) {
+        Player player = event.getPlayer();
         if (player == null) {
             return;
         }
-        String string2 = clientCustomPacketEvent.getId();
-        if (this.plugin.spConfig().debug()) {
-            this.plugin.getLogger().info("[包] " + player.getName() + " id=" + string2 + " data=" + String.valueOf(clientCustomPacketEvent.getData()));
+        String id = event.getId();
+        if (plugin.spConfig().debug()) {
+            plugin.getLogger().info("[包] " + player.getName()
+                    + " id=" + id
+                    + " data=" + event.getData());
         }
-        if (string2 == null || !string2.startsWith(PREFIX)) {
+        if (id == null || !id.startsWith(PREFIX)) {
             return;
         }
-        String string3 = string = string2.substring(PREFIX.length());
-        String string4 = null;
-        int n = string.indexOf(58);
-        if (n >= 0) {
-            string3 = string.substring(0, n);
-            string4 = string.substring(n + 1);
+        String action = id.substring(PREFIX.length());
+
+        String head = action;
+        String arg = null;
+        int colon = action.indexOf(':');
+        if (colon >= 0) {
+            head = action.substring(0, colon);
+            arg = action.substring(colon + 1);
         }
-        switch (string3) {
-            case "ready": {
-                this.plugin.panel().allowReady(player.getUniqueId());
-                break;
+
+        switch (head) {
+            // UI 就绪通知。
+            // ⚠️ 这里**不推数据**。open 触发器在每次重绘时都会触发，
+            // 一旦在这里 push 就会 ready → push → 重绘 → ready 死循环
+            // （HUD 踩过，表现为界面狂闪）。数据由 openPanel() 推。
+            case "ready" -> {
+                // 只做节流记录，不推数据
+                plugin.panel().allowReady(player.getUniqueId());
             }
-            case "close": {
-                this.plugin.panel().clickSound(player);
-                this.plugin.panel().closePanel(player);
-                break;
+            // 点 × 关闭
+            case "close" -> {
+                plugin.panel().clickSound(player);
+                plugin.panel().closePanel(player);
             }
-            case "page": {
-                this.plugin.panel().onPage(player, string4 == null ? "shixu" : string4);
-                break;
+            // 顶栏图标切页：starpact:page:shixu / jian / can / setting
+            case "page" -> plugin.panel().onPage(player, arg == null ? "shixu" : arg);
+            // 设置页「打开 HUD 设置」：关面板，让玩家看到 HUD
+            case "hud_edit" -> plugin.panel().onHudEdit(player);
+            case "hudset_ready" -> plugin.panel().pushHudSettings(player);
+            case "hudset_close" -> plugin.panel().onHudPanelClose(player);
+            case "hud_toggle" -> plugin.panel().onToggleHud(player);
+            case "hud_scale" -> {
+                int d = (arg == null) ? 0 : Integer.parseInt(arg.trim());
+                plugin.panel().onScaleHud(player, d);
             }
-            case "hud_edit": {
-                this.plugin.panel().onHudEdit(player);
-                break;
+            case "hud_w" -> {
+                int d = (arg == null) ? 0 : Integer.parseInt(arg.trim());
+                plugin.panel().onHudWidth(player, d);
             }
-            case "hudset_ready": {
-                this.plugin.panel().pushHudSettings(player);
-                break;
-            }
-            case "hudset_close": {
-                this.plugin.panel().onHudPanelClose(player);
-                break;
-            }
-            case "hud_toggle": {
-                this.plugin.panel().onToggleHud(player);
-                break;
-            }
-            case "hud_scale": {
-                int n2 = string4 == null ? 0 : Integer.parseInt(string4.trim());
-                this.plugin.panel().onScaleHud(player, n2);
-                break;
-            }
-            case "hud_w": {
-                int n3 = string4 == null ? 0 : Integer.parseInt(string4.trim());
-                this.plugin.panel().onHudWidth(player, n3);
-                break;
-            }
-            case "hud_reset": {
-                this.plugin.panel().onResetHud(player);
-                break;
-            }
-            case "hud_move": {
-                String[] stringArray;
-                int n4 = 0;
-                int n5 = 0;
-                if (string4 != null && (stringArray = string4.split(":")).length >= 2) {
-                    n4 = Integer.parseInt(stringArray[0].trim());
-                    n5 = Integer.parseInt(stringArray[1].trim());
+            case "hud_reset" -> plugin.panel().onResetHud(player);
+            case "hud_move" -> {
+                int dx = 0, dy = 0;
+                if (arg != null) {
+                    String[] parts = arg.split(":");
+                    if (parts.length >= 2) {
+                        dx = Integer.parseInt(parts[0].trim());
+                        dy = Integer.parseInt(parts[1].trim());
+                    }
                 }
-                this.plugin.panel().onMoveHud(player, n4, n5);
-                break;
+                plugin.panel().onMoveHud(player, dx, dy);
             }
-            case "hudpanel_close": {
-                this.plugin.panel().onHudPanelClose(player);
-                break;
+            case "hudpanel_close" -> plugin.panel().onHudPanelClose(player);
+            case "ui_scale" -> {
+                int d = (arg == null) ? 0 : Integer.parseInt(arg.trim());
+                plugin.panel().onScaleUi(player, d);
             }
-            case "content_scale": {
-                int n6 = string4 == null ? 0 : Integer.parseInt(string4.trim());
-                this.plugin.panel().onContentScale(player, n6);
-                break;
+            case "panel_alpha" -> {
+                int d = (arg == null) ? 0 : Integer.parseInt(arg.trim());
+                plugin.panel().onPanelAlpha(player, d);
             }
-            case "left_ratio": {
-                int n7 = string4 == null ? 0 : Integer.parseInt(string4.trim());
-                this.plugin.panel().onLeftRatio(player, n7);
-                break;
+            case "left_ratio" -> {
+                int d = (arg == null) ? 0 : Integer.parseInt(arg.trim());
+                plugin.panel().onLeftRatio(player, d);
             }
-            case "ui_scale": {
-                int n8 = string4 == null ? 0 : Integer.parseInt(string4.trim());
-                this.plugin.panel().onUiScale(player, n8);
-                break;
-            }
-            case "quest": {
-                this.plugin.panel().onSelectQuest(player, string4);
-            }
+            // 左栏选中任务：starpact:quest:<任务ID>
+            case "quest" -> plugin.panel().onSelectQuest(player, arg);
         }
     }
 
-    @EventHandler(priority=EventPriority.MONITOR)
-    public void onMenuClose(ClientMenuCloseEvent clientMenuCloseEvent) {
-        Player player = clientMenuCloseEvent.getPlayer();
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onMenuClose(ClientMenuCloseEvent event) {
+        Player player = event.getPlayer();
         if (player != null) {
-            this.plugin.panel().renderer().forget(player.getUniqueId());
+            // 只清理面板相关缓存，不影响 HUD
+            plugin.panel().renderer().forget(player.getUniqueId());
         }
     }
 }
-

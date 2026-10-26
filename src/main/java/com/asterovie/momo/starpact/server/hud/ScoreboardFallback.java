@@ -2,8 +2,6 @@ package com.asterovie.momo.starpact.server.hud;
 
 import com.asterovie.momo.starpact.server.StarPactPlugin;
 import com.asterovie.momo.starpact.server.model.TrackEntry;
-import com.asterovie.momo.starpact.server.util.Texts;
-import java.util.List;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.scoreboard.Criteria;
@@ -12,56 +10,66 @@ import org.bukkit.scoreboard.Objective;
 import org.bukkit.scoreboard.Scoreboard;
 import org.bukkit.scoreboard.Team;
 
+import java.util.List;
+
 /**
- * ArcartX 与 BossBar 都不可用时的计分板降级。
+ * 可选降级：把任务列表写到记分板侧边栏（多行）。
+ *
+ * <p>默认关闭 —— 因为很多服务器侧边栏已经被别的插件占了。
+ * config.yml 的 compat.fallback-to-scoreboard 打开才启用。
  */
 public final class ScoreboardFallback {
+
     private static final String OBJ = "starpact";
     private static final String CRIT = "dummy";
+
     private final StarPactPlugin plugin;
 
-    public ScoreboardFallback(StarPactPlugin starPactPlugin) {
-        this.plugin = starPactPlugin;
+    public ScoreboardFallback(StarPactPlugin plugin) {
+        this.plugin = plugin;
     }
 
-    public void render(Player player, List<TrackEntry> list) {
-        Objective objective;
+    @SuppressWarnings("deprecation")
+    public void render(Player player, List<TrackEntry> tracks) {
         if (player == null || !player.isOnline()) {
             return;
         }
-        if (list.isEmpty()) {
-            this.clear(player);
+        if (tracks.isEmpty()) {
+            clear(player);
             return;
         }
-        Scoreboard scoreboard = Bukkit.getScoreboardManager().getNewScoreboard();
+        Scoreboard board = Bukkit.getScoreboardManager().getNewScoreboard();
+        Objective obj;
         try {
-            objective = scoreboard.registerNewObjective(OBJ, Criteria.DUMMY, "§b任务追踪");
+            obj = board.registerNewObjective(OBJ, Criteria.DUMMY, "\u00a7b\u4efb\u52a1\u8ffd\u8e2a");
+        } catch (Throwable t) {
+            obj = board.registerNewObjective(OBJ, CRIT, "\u00a7b\u4efb\u52a1\u8ffd\u8e2a");
         }
-        catch (Throwable throwable) {
-            objective = scoreboard.registerNewObjective(OBJ, CRIT, "§b任务追踪");
+        obj.setDisplaySlot(DisplaySlot.SIDEBAR);
+
+        int line = tracks.size();
+        for (TrackEntry e : tracks) {
+            String text = "\u00a7f" + com.asterovie.momo.starpact.server.util.Texts.ellipsis(e.title(), 18)
+                    + " \u00a7b" + e.numbers();
+            obj.getScore(text).setScore(line--);
         }
-        objective.setDisplaySlot(DisplaySlot.SIDEBAR);
-        int n = list.size();
-        for (TrackEntry trackEntry : list) {
-            String string = "§f" + Texts.ellipsis(trackEntry.title(), 18) + " §b" + trackEntry.numbers();
-            objective.getScore(string).setScore(n--);
-        }
-        player.setScoreboard(scoreboard);
+        player.setScoreboard(board);
     }
 
     public void clear(Player player) {
         if (player == null || !player.isOnline()) {
             return;
         }
-        Scoreboard scoreboard = player.getScoreboard();
-        Objective objective = scoreboard.getObjective(OBJ);
-        if (objective != null) {
-            objective.unregister();
+        Scoreboard board = player.getScoreboard();
+        Objective obj = board.getObjective(OBJ);
+        if (obj != null) {
+            obj.unregister();
         }
     }
 
-    private static Team unused(Scoreboard scoreboard) {
+    /** 给 Team 前缀预留（当前实现直接用整行文本，不需要）。 */
+    @SuppressWarnings("unused")
+    private static Team unused(Scoreboard b) {
         return null;
     }
 }
-

@@ -4,127 +4,199 @@ import com.asterovie.momo.starpact.server.StarPactPlugin;
 import com.asterovie.momo.starpact.server.config.SpConfig;
 import com.asterovie.momo.starpact.server.model.TrackEntry;
 import com.asterovie.momo.starpact.server.storage.PlayerPrefs;
-import com.asterovie.momo.starpact.server.util.Texts;
+import org.bukkit.entity.Player;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import org.bukkit.entity.Player;
 
 /**
- * 任务追踪 HUD 的数据渲染。把任务列表拼成文本推给 ArcartX HUD。
+ * HUD 渲染层：把 {@link TrackEntry} 列表整理成 ArcartX UI 需要的包，并推送。
+ *
+ * <p>面板是固定的 3 条槽位（s0/s1/s2），不动态增删控件 ——
+ * 这样切任务时不会闪，也避开了 AX 动态控件创建的不确定性。
+ * 数据包里多出来的槽位用空字符串 + count 控制可见性。
  */
 public final class HudRenderer {
-    public static final String UI_ID = "starpact:quest_tracker";
-    private final StarPactPlugin plugin;
-    private final Map<UUID, Long> lastPushAt = new ConcurrentHashMap<UUID, Long>();
-    private final Map<UUID, String> lastFingerprint = new ConcurrentHashMap<UUID, String>();
 
-    public HudRenderer(StarPactPlugin starPactPlugin) {
-        this.plugin = starPactPlugin;
+    public static final String UI_ID = "starpact:quest_tracker";
+
+    private final StarPactPlugin plugin;
+    /** 用于节流：记录每个玩家上次推送的时间戳与内容指纹 */
+    private final Map<UUID, Long> lastPushAt = new ConcurrentHashMap<>();
+    private final Map<UUID, String> lastFingerprint = new ConcurrentHashMap<>();
+
+    public HudRenderer(StarPactPlugin plugin) {
+        this.plugin = plugin;
     }
 
-    public boolean push(Player player, List<TrackEntry> list, boolean bl) {
+    /**
+     * 推一次。
+     *
+     * @param force 忽略节流（玩家刚进服 / 手动刷新时用）
+     * @return 是否真的发出去了
+     */
+    public boolean push(Player player, List<TrackEntry> tracks, boolean force) {
         if (player == null || !player.isOnline()) {
             return false;
         }
-        SpConfig spConfig = this.plugin.spConfig();
-        PlayerPrefs.Pref pref = this.plugin.prefs().of(player.getUniqueId());
-        int n = Math.min(list.size(), spConfig.maxTracks());
-        boolean bl2 = pref.visible && (!spConfig.hideWhenEmpty() || n != 0);
-        StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder.append(pref.x).append(',').append(pref.y).append(',').append(bl2).append(',').append(n);
-        for (int i = 0; i < n; ++i) {
-            TrackEntry trackEntry = list.get(i);
-            stringBuilder.append('|').append(trackEntry.taskId()).append(':').append(trackEntry.bar(spConfig.barLength(), spConfig.barFill(), spConfig.barEmpty())).append(':').append(trackEntry.numbers()).append(':').append(trackEntry.title());
+        SpConfig cfg = plugin.spConfig();
+        PlayerPrefs.Pref pref = plugin.prefs().of(player.getUniqueId());
+
+        int count = Math.min(tracks.size(), cfg.maxTracks());
+
+        // 内容指纹：位置/开关/每条内容都算进去
+        boolean willShow = pref.visible && !(cfg.hideWhenEmpty() && count == 0);
+        StringBuilder fp = new StringBuilder();
+        fp.append(pref.x).append(',').append(pref.y).append(',').append(willShow).append(',')
+                .append(count);
+        for (int i = 0; i < count; i++) {
+            TrackEntry e = tracks.get(i);
+            fp.append('|').append(e.taskId()).append(':')
+                    .append(e.bar(cfg.barLength(), cfg.barFill(), cfg.barEmpty()))
+                    .append(':').append(e.numbers()).append(':').append(e.title());
         }
-        String string = stringBuilder.toString();
-        long l = System.currentTimeMillis();
-        Long l2 = this.lastPushAt.get(player.getUniqueId());
-        if (!bl) {
-            if (string.equals(this.lastFingerprint.get(player.getUniqueId()))) {
-                return false;
+        String fingerprint = fp.toString();
+
+        long now = System.currentTimeMillis();
+        Long last = lastPushAt.get(player.getUniqueId());
+        if (!force) {
+            if (fingerprint.equals(lastFingerprint.get(player.getUniqueId()))) {
+                return false; // 内容没变，不发
             }
-            if (l2 != null && l - l2 < spConfig.throttleMs()) {
-                return false;
+            if (last != null && now - last < cfg.throttleMs()) {
+                return false; // 节流
             }
         }
-        this.lastPushAt.put(player.getUniqueId(), l);
-        this.lastFingerprint.put(player.getUniqueId(), string);
-        double d = pref.scale <= 0.0 ? spConfig.defaultScale() : spConfig.clampScale(pref.scale);
-        HashMap<Object, Object> hashMap = new HashMap<Object, Object>();
-        hashMap.put("x", pref.custom ? pref.x : spConfig.offsetX());
-        hashMap.put("y", pref.custom ? pref.y : spConfig.offsetY());
-        boolean bl3 = pref.visible && (!spConfig.hideWhenEmpty() || n != 0);
-        hashMap.put("show", bl3 ? 1 : 0);
-        hashMap.put("zoom", d);
-        int n2 = pref.hudW > 0 ? pref.hudW : spConfig.width();
-        hashMap.put("w", Math.round((double)n2 * d));
-        int n3 = pref.hudH > 0 ? pref.hudH : this.panelHeight(spConfig, n);
-        hashMap.put("h", Math.round((double)n3 * d));
-        hashMap.put("fsTitle", Math.round(20.0 * d));
-        hashMap.put("fsBody", Math.round(18.0 * d));
-        hashMap.put("fsHint", Math.round(15.0 * d));
-        hashMap.put("fsLine", Math.round(21.0 * d));
-        hashMap.put("padX", Math.round(14.0 * d));
-        hashMap.put("rowH", Math.round(54.0 * d));
-        hashMap.put("topPad", Math.round(12.0 * d));
-        hashMap.put("rowGap", Math.round(30.0 * d));
-        for (int i = 0; i < spConfig.maxTracks(); ++i) {
-            boolean bl4 = bl3 && i < n;
-            String string2 = "§r";
-            String string3 = "§r";
-            if (i < n) {
-                TrackEntry trackEntry = list.get(i);
-                string2 = this.line1(spConfig, trackEntry);
-                string3 = this.line2(spConfig, trackEntry);
+        lastPushAt.put(player.getUniqueId(), now);
+        lastFingerprint.put(player.getUniqueId(), fingerprint);
+
+        double zoom = pref.scale <= 0 ? cfg.defaultScale() : cfg.clampScale(pref.scale);
+
+        Map<String, Object> packet = new HashMap<>();
+        // 位置：直接下发绝对坐标（UI 像素）。
+        // HUD 的 UI 不使用任何容器嵌套，所以 val.panel.x/y 能真正生效。
+        packet.put("x", pref.custom ? pref.x : cfg.offsetX());
+        packet.put("y", pref.custom ? pref.y : cfg.offsetY());
+        // 整块面板是否显示：玩家关掉了 HUD、或没有任务且配置要求隐藏时，都不显示
+        boolean show = pref.visible && !(cfg.hideWhenEmpty() && count == 0);
+        packet.put("show", show ? 1 : 0);
+        // 缩放：所有尺寸都乘 zoom，由客户端直接赋值（不在 Aria 里算，便于维护）
+        packet.put("zoom", zoom);
+        // 宽度：玩家自定义优先，否则用配置默认
+        int baseW = pref.hudW > 0 ? pref.hudW : cfg.width();
+        packet.put("w", Math.round(baseW * zoom));
+        // 高度：玩家自定义优先（0 = 按任务数自动算）
+        int baseH = pref.hudH > 0 ? pref.hudH : panelHeight(cfg, count);
+        packet.put("h", Math.round(baseH * zoom));
+        packet.put("fsTitle", Math.round(20 * zoom));
+        packet.put("fsBody", Math.round(18 * zoom));
+        packet.put("fsHint", Math.round(15 * zoom));
+        packet.put("fsLine", Math.round(21 * zoom));
+        packet.put("padX", Math.round(14 * zoom));
+        packet.put("rowH", Math.round(54 * zoom));
+        packet.put("topPad", Math.round(12 * zoom));
+        packet.put("rowGap", Math.round(30 * zoom));
+
+        // 没有任何任务时，第一行显示「暂无任务」提示，
+        // 而不是留一个空面板（hide-when-empty 已默认关闭）。
+        boolean empty = count == 0;
+        if (empty && show) {
+            packet.put("t0", "\u00a78暂无追踪中的任务");
+            packet.put("b0", "\u00a78按 J 打开任务面板");
+            packet.put("v0", 1);
+        }
+
+        for (int i = 0; i < cfg.maxTracks(); i++) {
+            if (empty && i == 0) {
+                continue;
             }
-            hashMap.put("t" + i, string2);
-            hashMap.put("b" + i, string3);
-            hashMap.put("v" + i, bl4 ? 1 : 0);
+            boolean visible = show && i < count;
+            // ⚠️ 必须是非空字符串。ArcartX 把空串序列化成 "[ , ]"，
+            // Aria 解析器会在逗号处报 "Unexpected token: COMMA"，
+            // 并把整个 attribute 块丢弃 —— HUD 会完全不显示。
+            // 用 "§r"（重置格式）作为「空行」的安全占位。
+            String t = "\u00a7r";
+            String b = "\u00a7r";
+            if (i < count) {
+                TrackEntry e = tracks.get(i);
+                t = line1(cfg, e);
+                b = line2(cfg, e);
+            }
+            packet.put("t" + i, t);
+            packet.put("b" + i, b);
+            packet.put("v" + i, visible ? 1 : 0);
         }
-        if (spConfig.debug()) {
-            this.plugin.getLogger().info("[HUD] " + player.getName() + " -> " + String.valueOf(hashMap));
+
+        if (cfg.debug()) {
+            plugin.getLogger().info("[HUD] " + player.getName() + " -> " + packet);
         }
-        if (this.plugin.ax().available()) {
-            this.plugin.ax().sendPacket(player, UI_ID, "sync", hashMap);
+
+        if (plugin.ax().available()) {
+            plugin.ax().sendPacket(player, UI_ID, "sync", packet);
             return true;
         }
         return false;
     }
 
-    private String line1(SpConfig spConfig, TrackEntry trackEntry) {
-        Object object = Texts.ellipsis(trackEntry.title(), 20);
-        Object object2 = object = trackEntry.completed() ? "§a✔ " + (String)object : "§f" + (String)object;
-        if (!spConfig.showNumbers()) {
-            return object;
+    /**
+     * 第一行：目标名（左）+ 进度数字（右，用空格推到右边缘）。
+     *
+     * <p>宽度按设计基准换算：fontSize 30 时 1 个 ASCII 字符约占 15 设计单位，
+     * 面板 320 宽、左右各留 16 → 可用 288 ≈ 19 个字符位。
+     */
+    private String line1(SpConfig cfg, TrackEntry e) {
+        // 中文占 2 位，标题最多 ~20 位（约 10 个汉字）
+        String title = com.asterovie.momo.starpact.server.util.Texts.ellipsis(e.title(), 20);
+        if (e.completed()) {
+            title = "\u00a7a\u2714 " + title;
+        } else {
+            title = "\u00a7f" + title;
         }
-        String string = "§7" + trackEntry.numbers();
-        int n = Texts.visualWidth((String)object) + Texts.visualWidth(string);
-        int n2 = Math.max(1, this.lineWidthChars(spConfig) - n);
-        return (String)object + " ".repeat(n2) + string;
+        if (!cfg.showNumbers()) {
+            return title;
+        }
+        String nums = "\u00a77" + e.numbers();
+        int used = com.asterovie.momo.starpact.server.util.Texts.visualWidth(title)
+                + com.asterovie.momo.starpact.server.util.Texts.visualWidth(nums);
+        int pad = Math.max(1, lineWidthChars(cfg) - used);
+        return title + " ".repeat(pad) + nums;
     }
 
-    private int lineWidthChars(SpConfig spConfig) {
-        int n = Math.max(100, spConfig.width() - 32);
-        return Math.max(10, n / 9);
+    /**
+     * 一行能放多少个「字符位」（中文算 2）。
+     *
+     * <p>fontSize 18 下，1 个 ASCII 字符约占 9 个 UI 单位。
+     * 面板宽度来自 config.yml 的 hud.width（默认 380）。
+     */
+    private int lineWidthChars(SpConfig cfg) {
+        int usable = Math.max(100, cfg.width() - 32);
+        return Math.max(10, usable / 9);
     }
 
-    private String line2(SpConfig spConfig, TrackEntry trackEntry) {
-        String string = trackEntry.bar(spConfig.barLength(), spConfig.barFill(), spConfig.barEmpty());
-        String string2 = trackEntry.completed() ? "§a" : (trackEntry.percent() >= 1.0 ? "§a" : "§b");
-        return string2 + string;
+    /** 第二行：细进度条。 */
+    private String line2(SpConfig cfg, TrackEntry e) {
+        String bar = e.bar(cfg.barLength(), cfg.barFill(), cfg.barEmpty());
+        String color = e.completed() ? "\u00a7a" : (e.percent() >= 1 ? "\u00a7a" : "\u00a7b");
+        return color + bar;
     }
 
-    private int panelHeight(SpConfig spConfig, int n) {
-        int n2 = Math.max(1, Math.min(n, spConfig.maxTracks()));
-        return 52 + n2 * 54;
+    /**
+     * 根据条数算面板高度，推给客户端调底板尺寸。
+     *
+     * <p>布局基准（见 ui/quest-tracker.yml）：
+     * 标题 y=182、第一条 y=214、每条占 54（两行 × lineSpace 21 + 12 间隙），
+     * 面板顶部 y=170。所以高度 = 52 + 条数 × 54。
+     */
+    private int panelHeight(SpConfig cfg, int count) {
+        int n = Math.max(1, Math.min(count, cfg.maxTracks()));
+        return 52 + n * 54;
     }
 
-    public void forget(UUID uUID) {
-        this.lastPushAt.remove(uUID);
-        this.lastFingerprint.remove(uUID);
+    public void forget(UUID id) {
+        lastPushAt.remove(id);
+        lastFingerprint.remove(id);
     }
 }
-
