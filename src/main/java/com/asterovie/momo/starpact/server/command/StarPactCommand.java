@@ -32,6 +32,8 @@ public final class StarPactCommand implements CommandExecutor, TabCompleter {
         switch (sub) {
             case "help" -> help(sender);
             case "panel", "gui", "menu" -> panel(sender);
+            case "probe" -> probe(sender);
+            case "reward", "rw" -> reward(sender, args);
             case "toggle" -> toggle(sender);
             case "move" -> move(sender, args);
             case "reset" -> reset(sender);
@@ -48,6 +50,75 @@ public final class StarPactCommand implements CommandExecutor, TabCompleter {
             return;
         }
         plugin.panel().openPanel(p);
+    }
+
+    /** 探针：打开原版箱子，用来确认界面 ID 和 Slot 渲染。 */
+    private void probe(CommandSender sender) {
+        Player p = asPlayer(sender);
+        if (p == null) {
+            return;
+        }
+        plugin.panel().openPanel(p);
+    }
+
+    /**
+     * /sp reward &lt;任务ID&gt; —— 把该任务配置的奖励物品发给自己。
+     *
+     * <p>用途：
+     * <ul>
+     *   <li>预览奖励图标长什么样（含 NI 动态参数的效果）</li>
+     *   <li>指令型奖励只显示、不执行——避免误发点券/经验</li>
+     * </ul>
+     */
+    private void reward(CommandSender sender, String[] args) {
+        Player p = asPlayer(sender);
+        if (p == null) {
+            return;
+        }
+        var loader = plugin.quests();
+        if (loader == null) {
+            msg(sender, "command.no-quests");
+            return;
+        }
+        if (args.length < 2) {
+            p.sendMessage(com.asterovie.momo.starpact.server.util.Texts.colorize(
+                    "&b[星契] &7用法: &f/sp reward <任务ID>"));
+            p.sendMessage(com.asterovie.momo.starpact.server.util.Texts.colorize(
+                    "&7可用的任务: &f" + String.join(", ", loader.ids())));
+            return;
+        }
+        String questId = args[1];
+        var cfg = loader.get(questId);
+        if (cfg == null) {
+            p.sendMessage(com.asterovie.momo.starpact.server.util.Texts.colorize(
+                    "&c[星契] 找不到任务: " + questId));
+            return;
+        }
+        if (cfg.rewards().isEmpty()) {
+            p.sendMessage(com.asterovie.momo.starpact.server.util.Texts.colorize(
+                    "&7[星契] 该任务没有配置奖励"));
+            return;
+        }
+        var items = plugin.items();
+        if (items == null) {
+            return;
+        }
+        int given = 0;
+        for (var r : cfg.rewards()) {
+            var stack = items.resolve(r);
+            if (stack == null) {
+                p.sendMessage(com.asterovie.momo.starpact.server.util.Texts.colorize(
+                        "&c[星契] 解析失败: " + r.provider() + ":" + r.key()));
+                continue;
+            }
+            var leftover = p.getInventory().addItem(stack);
+            for (var drop : leftover.values()) {
+                p.getWorld().dropItemNaturally(p.getLocation(), drop);
+            }
+            given++;
+        }
+        p.sendMessage(com.asterovie.momo.starpact.server.util.Texts.colorize(
+                "&b[星契] &7已发放 &f" + given + " &7项奖励 &8(仅预览，指令不执行)"));
     }
 
     private void help(CommandSender sender) {

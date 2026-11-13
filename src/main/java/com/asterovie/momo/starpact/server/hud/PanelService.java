@@ -57,11 +57,9 @@ public final class PanelService {
         // 这里再叠一层会导致「刚关掉面板马上按 J 打不开」。
         UUID uid = player.getUniqueId();
 
-        if (plugin.spConfig().debug()) {
-            plugin.getLogger().info("[面板打开] " + player.getName());
-        }
 
-        plugin.ax().open(player, PanelRenderer.UI_ID);
+        // 先开奖励容器（AX 的 match 会把它替换成任务面板）
+        openRewardContainer(player);
 
         // 立刻推一次（AX 会缓存，UI 就绪时处理），5 tick 后再推一次兜底
         push(player);
@@ -72,8 +70,157 @@ public final class PanelService {
         }, 5L);
     }
 
+    /**
+     * 把奖励容器的内容刷新成「当前选中任务」的奖励。
+     *
+     * <p>容器只在打开时创建一次，但选中任务会变，所以每次 push 前要重新填。
+     * 物品来源和 {@link PanelRenderer#rewardSlotCount} 必须完全一致，
+     * 否则会出现「有格子但没物品」或「有物品但格子被隐藏」。
+     */
+    private void refreshRewardContainer(Player player) {
+        if (!rewardViewers.contains(player.getUniqueId())) {
+            return;
+        }
+        org.bukkit.inventory.Inventory top = player.getOpenInventory().getTopInventory();
+        if (!(top.getHolder() instanceof RewardHolder)) {
+            return;
+        }
+        var items = plugin.items();
+        if (items == null || plugin.quests() == null) {
+            return;
+        }
+        var sel = renderer.selectedQuest(player);
+        if (sel == null) {
+            // 没有选中任务时保持原样，不要把已有物品清掉
+            return;
+        }
+        var qc = plugin.quests().get(sel.id());
+        if (qc == null) {
+            return;
+        }
+        // 确认有任务之后再清空，避免「选中短暂为空」时把容器掏空
+        for (int i = 0; i < top.getSize(); i++) {
+            top.setItem(i, null);
+        }
+        int placed = 0;
+        for (var r : qc.rewards()) {
+            if (placed >= PanelRenderer.REWARD_SLOT_COUNT) {
+                break;
+            }
+            var stack = items.resolve(r);
+            if (stack == null) {
+                continue;
+            }
+            top.setItem(placed, stack);
+            placed++;
+        }
+    }
+
+    /** 奖励预览容器的 holder（用于识别并拦截点击）。 */
+    public static final class RewardHolder implements org.bukkit.inventory.InventoryHolder {
+        private org.bukkit.inventory.Inventory inventory;
+
+        void bind(org.bukkit.inventory.Inventory inv) {
+            this.inventory = inv;
+        }
+
+        @Override
+        public org.bukkit.inventory.Inventory getInventory() {
+            return inventory;
+        }
+    }
+
+    /** 奖励容器的固定标题（AX 的 match 靠它命中）。 */
+    public static final String REWARD_TITLE = "StarPactRewards";
+
+    /** 奖励最多 9 格（一行箱子槽位）。 */
+    
+
+    /** 正在展示奖励容器的玩家。 */
+    private final java.util.Set<java.util.UUID> rewardViewers = new java.util.HashSet<>();
+
+    public boolean isRewardViewer(Player player) {
+        return rewardViewers.contains(player.getUniqueId());
+    }
+
+    /**
+     * 打开奖励容器：一个 9 格箱子，里面放当前任务的奖励物品。
+     *
+     * <p>为什么要箱子：AX 的 Slot 控件只有绑定「真实容器槽位」才能渲染物品，
+     * 自定义 UI 里直接推送物品不会被客户端渲染。物品放在真实容器里，
+     * 图标和原版 tooltip 都由客户端原生提供。
+     *
+     * <p>UI 侧用 {@code match} 命中这个容器标题，把原版盒子盖成任务面板；
+     * 槽位在界面上的位置仍由 UI 里 Slot 控件的 x/y 决定。
+     */
+    public void openRewardContainer(Player player) {
+        if (player == null || !player.isOnline()) {
+            return;
+        }
+        RewardHolder holder = new RewardHolder();
+        org.bukkit.inventory.Inventory inv = plugin.getServer()
+                .createInventory(holder, PanelRenderer.REWARD_SLOT_COUNT, REWARD_TITLE);
+        holder.bind(inv);
+
+        // 按顺序放「能解析成物品」的奖励，解析失败的跳过，不占格子
+        var items = plugin.items();
+        int placed = 0;
+        if (items != null && plugin.quests() != null) {
+            java.util.List<com.asterovie.momo.starpact.server.quest.QuestConfig.Reward> rewards =
+                    new java.util.ArrayList<>();
+            var sel = renderer.selectedQuest(player);
+            String preferId = sel == null ? null : sel.id();
+            if (preferId != null && plugin.quests().get(preferId) != null) {
+                rewards.addAll(plugin.quests().get(preferId).rewards());
+            }
+            if (rewards.isEmpty()) {
+                for (String qid : plugin.quests().ids()) {
+                    var qc = plugin.quests().get(qid);
+                    if (qc != null && !qc.rewards().isEmpty()) {
+                        rewards.addAll(qc.rewards());
+                        break;
+                    }
+                }
+            }
+            for (var r : rewards) {
+                if (placed >= PanelRenderer.REWARD_SLOT_COUNT) {
+                    break;
+                }
+                var stack = items.resolve(r);
+                if (stack == null) {
+                    continue;
+                }
+                inv.setItem(placed, stack);
+                placed++;
+            }
+        }
+
+        rewardViewers.add(player.getUniqueId());
+        player.openInventory(inv);
+
+    }
+
+    public void onRewardContainerClose(Player player) {
+        if (player != null) {
+            rewardViewers.remove(player.getUniqueId());
+        }
+    }
+
+    /**
+     * 关掉任务面板。
+     *
+     * <p>面板是套在「奖励容器」（原版箱子）上的，所以除了关 AX 的 UI，
+     * 还要把那个箱子也关掉——否则玩家会看到一个空的箱子界面，
+     * 而且箱子的点击拦截会一直生效。
+     */
     public void closePanel(Player player) {
         plugin.ax().close(player, PanelRenderer.UI_ID);
+        // 关掉承载面板的箱子
+        org.bukkit.inventory.Inventory top = player.getOpenInventory().getTopInventory();
+        if (top.getHolder() instanceof RewardHolder) {
+            player.closeInventory();
+        }
+        onRewardContainerClose(player);
     }
 
     /** 切页（点顶栏图标）。 */
@@ -118,6 +265,8 @@ public final class PanelService {
         p.put("show", 1);
         p.put("v1", "\u00a7f" + Math.round(pref.scale * 100) + "%");
         p.put("v2", "\u00a7f" + (pref.hudW > 0 ? pref.hudW : plugin.spConfig().width()));
+        p.put("align", pref.align == null ? "NONE" : pref.align);
+        p.put("yRatio", Math.max(0, Math.min(1, pref.y / 294.0)));
         plugin.ax().sendPacket(player, PanelRenderer.HUD_SETTINGS_UI_ID, "sync", p);
     }
     /** HUD 显隐切换。 */
@@ -125,6 +274,21 @@ public final class PanelService {
         clickSound(player);
         var pref = plugin.prefs().of(player.getUniqueId());
         plugin.prefs().setVisible(player.getUniqueId(), !pref.visible);
+        plugin.hud().refresh(player, true);
+        pushHudSettings(player);
+    }
+
+    /** HUD 水平吸附：LEFT / RIGHT / NONE。 */
+    public void onAlignHud(Player player, String dir) {
+        if (player == null || !player.isOnline()) {
+            return;
+        }
+        String d = dir == null ? "" : dir.trim().toUpperCase(java.util.Locale.ROOT);
+        if (!d.equals("LEFT") && !d.equals("RIGHT") && !d.equals("NONE")) {
+            return;
+        }
+        clickSound(player);
+        plugin.prefs().setAlign(player.getUniqueId(), d);
         plugin.hud().refresh(player, true);
         pushHudSettings(player);
     }
@@ -155,8 +319,40 @@ public final class PanelService {
         var pref = plugin.prefs().of(player.getUniqueId());
         plugin.prefs().setPosition(player.getUniqueId(), pref.x + dx, pref.y + dy);
         plugin.hud().applyPosition(player);
+        pushHudSettings(player);
     }
 
+/**
+     * 滑块调垂直位置。
+     *
+     * @param value 0.0 ~ 1.0，映射到屏幕高度的 0% ~ 100%
+     */
+    public void onHudY(Player player, double value) {
+        if (player == null || !player.isOnline()) {
+            return;
+        }
+        double v = Math.max(0, Math.min(1, value));
+        var pref = plugin.prefs().of(player.getUniqueId());
+        // 上限按 UI 坐标估算：HUD 不能完全沉到屏幕底
+        int maxY = Math.max(80, (int) Math.round(392 * 0.75));
+        int y = (int) Math.round(maxY * v);
+        plugin.prefs().setPosition(player.getUniqueId(), pref.x, y);
+        plugin.hud().applyPosition(player);
+        pushHudSettings(player);
+    }
+
+    /** 滚轮微调垂直位置（每格 8 单位）。 */
+    public void onHudYScroll(Player player, double wheel) {
+        if (player == null || !player.isOnline() || wheel == 0) {
+            return;
+        }
+        var pref = plugin.prefs().of(player.getUniqueId());
+        int delta = wheel > 0 ? -8 : 8;
+        int y = Math.max(0, Math.min(300, pref.y + delta));
+        plugin.prefs().setPosition(player.getUniqueId(), pref.x, y);
+        plugin.hud().applyPosition(player);
+        pushHudSettings(player);
+    }
     /** HUD 位置重置。 */
     public void onResetHud(Player player) {
         clickSound(player);
@@ -191,9 +387,73 @@ public final class PanelService {
     }
 
     /** 选中左栏某个任务。 */
+    /**
+     * 详情区滚轮：delta 正数=向下。
+     *
+     * <p>必须节流 —— 客户端一次滚动会连发好几个 wheel 事件
+     * （实测一次滚轮能触发 3 个包），不拦的话偏移量会瞬间被推到底，
+     * 表现为「一滚就跳到最后一页，看不到开头」。
+     *
+     * <p>这里用「每 150ms 最多受理一次」的方式合并突发事件。
+     */
+    public void onScrollDetail(Player player, int delta) {
+        if (delta == 0) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        Long last = lastScrollAt.get(player.getUniqueId());
+        if (last != null && now - last < SCROLL_THROTTLE_MS) {
+            return;
+        }
+        lastScrollAt.put(player.getUniqueId(), now);
+
+        renderer.scrollDetail(player, delta);
+        push(player);
+    }
+
+    /**
+     * 点「追踪任务」按钮：把当前选中的任务设为 HUD 追踪目标。
+     *
+     * <p>再点一次就取消追踪（toggle）。追踪状态存在 PlayerPrefs 里，
+     * 重进服务器仍然保留。
+     */
+    public void onToggleTrack(Player player) {
+        String cur = renderer.selectedOf(player);
+        if (cur == null || cur.isBlank()) {
+            return;
+        }
+        String tracked = plugin.prefs().of(player.getUniqueId()).trackedId;
+        boolean starting = !cur.equals(tracked);
+        plugin.prefs().setTracked(player.getUniqueId(), starting ? cur : null);
+        clickSound(player);
+        // 立刻刷新 HUD（切追踪目标 / 取消追踪）
+        plugin.hud().refresh(player, true);
+        if (starting) {
+            // 开始追踪：关掉面板，直接回到游戏看 HUD
+            closePanel(player);
+        } else {
+            // 取消追踪：面板保持打开，方便改选别的任务
+            push(player);
+        }
+    }
+
+    /** 滚轮节流间隔（毫秒）。 */
+    private static final long SCROLL_THROTTLE_MS = 150L;
+    private final java.util.Map<UUID, Long> lastScrollAt = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** 左栏固定行点击：把行号换算成任务 ID 后走正常选中流程。 */
+    public void onSelectRow(Player player, int row) {
+        String id = renderer.questIdAt(player, row);
+        if (id == null || id.isBlank() || "__empty__".equals(id)) {
+            return;
+        }
+        onSelectQuest(player, id);
+    }
     public void onSelectQuest(Player player, String questId) {
         clickSound(player);
         renderer.setSelected(player, questId);
+        // 换任务后回到顶部，否则会停在上一个任务的滚动位置
+        renderer.resetDetailScroll(player);
         push(player);
     }
 
@@ -235,11 +495,10 @@ public final class PanelService {
             return;
         }
         Map<String, Object> packet = renderer.buildPacket(player);
-        if (plugin.spConfig().debug()) {
-            plugin.getLogger().info("[面板发包] " + player.getName()
-                    + " page=" + renderer.pageOf(player)
-                    + " selected=" + renderer.selectedOf(player));
-        }
+        // 先把容器内容同步成「当前选中任务」的奖励，
+        // 否则换任务后 packet 里的 reward_rows 和容器里的物品会对不上
+        refreshRewardContainer(player);
+
         plugin.ax().sendPacket(player, PanelRenderer.UI_ID, "sync", packet);
     }
 

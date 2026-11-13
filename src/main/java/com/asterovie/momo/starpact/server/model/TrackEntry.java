@@ -17,10 +17,17 @@ public record TrackEntry(
         double target,
         /** 0.0 ~ 1.0 */
         double percent,
-        boolean completed) {
+        boolean completed,
+        /**
+         * 任务接取时间（Chemdah 的 {@code Quest.getStartTime()}）。
+         *
+         * <p>同一个任务完成后重新接取时，id 不变、进度可能也不变，
+         * 只有这个时间戳一定会变——用它才能可靠识别「重新接取」。
+         */
+        long startTime) {
 
     public static TrackEntry empty() {
-        return new TrackEntry("", "", "", "", 0, 0, 0, false);
+        return new TrackEntry("", "", "", "", 0, 0, 0, false, 0L);
     }
 
     public boolean isBlank() {

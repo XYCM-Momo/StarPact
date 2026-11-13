@@ -38,9 +38,12 @@ ui:
       var.SINGLE_X = var.BTN_X + var.SINGLE_W / 2 - var.BTN_W / 2
       var.VAL_X = var.SW * 0.1500
       var.CLOSE_X = var.PW / 2 - var.PAD - var.SW * 0.0110
+      var.TRACK_W = var.BTN_W * 2 + var.GAP
+      var.TRACK_X = (var.BTN_X + var.BTN2_X + var.BTN_W) / 2
+      var.KNOB_W = var.SW * 0.0160
 
       val.hs_bg.width = var.PW
-      val.hs_bg.height = var.SH * 0.6200
+      val.hs_bg.height = var.SH * 0.7000
       var.LABEL_X = var.LEFT + var.LBL_W / 2
       val.hs_title.width = var.LBL_W
       val.hs_title.x = var.LABEL_X
@@ -55,8 +58,17 @@ ui:
       val.hs_b1.width = var.SINGLE_W
       val.hs_b4.x = var.SINGLE_X
       val.hs_b4.width = var.SINGLE_W
+      val.hs_v3.width = var.SINGLE_W
+      val.hs_v3.x = var.SINGLE_X
+      val.hs_knob.width = var.KNOB_W
+      val.hs_knob.height = var.SH * 0.0360
+      val.hs_knob.maxDragX = var.SINGLE_W - var.KNOB_W
+      val.hs_knob.x = var.SINGLE_X - var.SINGLE_W / 2 + var.KNOB_W / 2 + (var.SINGLE_W - var.KNOB_W) * (packet['yRatio'] + 0)
       val.hs_v1.x = var.VAL_X
       val.hs_v2.x = var.VAL_X
+      val.hs_l7.x = var.LABEL_X
+      val.hs_b7.x = var.BTN_X
+      val.hs_b7r.x = var.BTN2_X
 
       val.hs_bg.visible = packet['show']
       val.hs_title.visible = packet['show']
@@ -68,17 +80,20 @@ ui:
       val.hs_l5.visible = packet['show']
       val.hs_l6.visible = packet['show']
       val.hs_b1.visible = packet['show']
-      val.hs_b2.visible = packet['show']
-      val.hs_b3.visible = packet['show']
       val.hs_b4.visible = packet['show']
       val.hs_b5.visible = packet['show']
       val.hs_b6.visible = packet['show']
-      val.hs_b2r.visible = packet['show']
-      val.hs_b3r.visible = packet['show']
       val.hs_b5r.visible = packet['show']
       val.hs_b6r.visible = packet['show']
+      val.hs_v3.visible = packet['show']
+      val.hs_knob.visible = packet['show']
       val.hs_v1.visible = packet['show']
       val.hs_v2.visible = packet['show']
+      val.hs_l7.visible = packet['show']
+      val.hs_b7.visible = packet['show']
+      val.hs_b7r.visible = packet['show']
+      val.hs_b7.alpha = 0.55 + 0.45 * (packet['align'] == 'LEFT')
+      val.hs_b7r.alpha = 0.55 + 0.45 * (packet['align'] == 'RIGHT')
       val.hs_v1.texts = [packet['v1']]
       val.hs_v2.texts = [packet['v2']]
 
@@ -93,7 +108,7 @@ controls:
       y: Screen.getHeight() * 0.0000
       width: Screen.getWidth() * 0.5200
       height: Screen.getHeight() * 0.6200
-      normal: ~10,12,18,235
+      normal: ~10,12,18,170
       shape: ~round_rect
       radius: 8
   hs_title:
@@ -142,7 +157,7 @@ controls:
       point: ~middle_center
       visible: false
       x: Screen.getWidth() * -0.2050
-      y: Screen.getHeight() * -0.1850
+      y: Screen.getHeight() * -0.1900
       width: Screen.getWidth() * 0.1150
       height: Screen.getHeight() * 0.0550
       fontSize: Screen.getWidth() * 0.024
@@ -156,7 +171,7 @@ controls:
       point: ~middle_center
       visible: false
       x: Screen.getWidth() * -0.0160
-      y: Screen.getHeight() * -0.1930
+      y: Screen.getHeight() * -0.1820
       width: Screen.getWidth() * 0.2070
       height: Screen.getHeight() * 0.0550
       normal: ~38,44,64,235
@@ -175,46 +190,6 @@ controls:
         width: 1
         color: ~96,208,200,150
 
-  hs_l2:
-    val: "hs_l2"
-    type: Text
-    attribute:
-      point: ~middle_center
-      visible: false
-      x: Screen.getWidth() * -0.2050
-      y: Screen.getHeight() * -0.1100
-      width: Screen.getWidth() * 0.1150
-      height: Screen.getHeight() * 0.0550
-      fontSize: Screen.getWidth() * 0.024
-      texts:
-        - ~&7水平位置
-
-  hs_b2:
-    val: "hs_b2"
-    type: Texture
-    attribute:
-      point: ~middle_center
-      visible: false
-      x: Screen.getWidth() * -0.0700
-      y: Screen.getHeight() * -0.1180
-      width: Screen.getWidth() * 0.0990
-      height: Screen.getHeight() * 0.0550
-      normal: ~38,44,64,235
-      hover: ~58,78,110,255
-      shape: ~round_rect
-      radius: 4
-      texts:
-        - ~&f←
-      fontSize: Screen.getWidth() * 0.024
-      center: true
-    action:
-      click: |-
-        Packet.send('starpact:hud_move:-40:0')
-    effect:
-      stroke:
-        width: 1
-        color: ~96,208,200,150
-
   hs_l3:
     val: "hs_l3"
     type: Text
@@ -222,38 +197,56 @@ controls:
       point: ~middle_center
       visible: false
       x: Screen.getWidth() * -0.2050
-      y: Screen.getHeight() * -0.0350
+      y: Screen.getHeight() * -0.1150
       width: Screen.getWidth() * 0.1150
       height: Screen.getHeight() * 0.0550
       fontSize: Screen.getWidth() * 0.024
       texts:
         - ~&7垂直位置
 
-  hs_b3:
-    val: "hs_b3"
+  hs_v3:
+    val: "hs_v3"
     type: Texture
     attribute:
       point: ~middle_center
       visible: false
-      x: Screen.getWidth() * -0.0700
-      y: Screen.getHeight() * -0.0430
-      width: Screen.getWidth() * 0.0990
-      height: Screen.getHeight() * 0.0550
-      normal: ~38,44,64,235
-      hover: ~58,78,110,255
+      x: Screen.getWidth() * -0.0160
+      y: Screen.getHeight() * -0.1150
+      width: Screen.getWidth() * 0.1900
+      height: Screen.getHeight() * 0.0180
+      normal: ~38,44,64,200
       shape: ~round_rect
-      radius: 4
-      texts:
-        - ~&f↑
-      fontSize: Screen.getWidth() * 0.024
-      center: true
+      radius: 6
     action:
-      click: |-
-        Packet.send('starpact:hud_move:0:-40')
+      wheel: |-
+          Packet.send('starpact:hud_yscroll:' + self.wheelValue)
     effect:
       stroke:
         width: 1
-        color: ~96,208,200,150
+        color: ~96,208,200,120
+
+  hs_knob:
+    val: "hs_knob"
+    type: Texture
+    attribute:
+      point: ~middle_center
+      visible: false
+      x: Screen.getWidth() * -0.1115
+      y: Screen.getHeight() * -0.1150
+      width: Screen.getWidth() * 0.0160
+      height: Screen.getHeight() * 0.0360
+      normal: ~96,208,200,235
+      hover: ~120,230,220,255
+      shape: ~round_rect
+      radius: 4
+      maxDragX: 0
+    action:
+      release: |-
+        Packet.send('starpact:hud_y:' + self.getDragXRatio())
+    effect:
+      stroke:
+        width: 1
+        color: ~200,255,250,200
 
   hs_l4:
     val: "hs_l4"
@@ -261,8 +254,8 @@ controls:
     attribute:
       point: ~middle_center
       visible: false
-      x: Screen.getWidth() * -0.2050
-      y: Screen.getHeight() * 0.0400
+      x: Screen.getWidth() * -0.1115
+      y: Screen.getHeight() * -0.0400
       width: Screen.getWidth() * 0.1150
       height: Screen.getHeight() * 0.0550
       fontSize: Screen.getWidth() * 0.024
@@ -275,8 +268,8 @@ controls:
     attribute:
       point: ~middle_center
       visible: false
-      x: Screen.getWidth() * -0.0160
-      y: Screen.getHeight() * 0.0320
+      x: Screen.getWidth() * -0.1115
+      y: Screen.getHeight() * -0.0320
       width: Screen.getWidth() * 0.2070
       height: Screen.getHeight() * 0.0550
       normal: ~38,44,64,235
@@ -301,8 +294,8 @@ controls:
     attribute:
       point: ~middle_center
       visible: false
-      x: Screen.getWidth() * -0.2050
-      y: Screen.getHeight() * 0.1150
+      x: Screen.getWidth() * -0.1115
+      y: Screen.getHeight() * 0.0350
       width: Screen.getWidth() * 0.1150
       height: Screen.getHeight() * 0.0550
       fontSize: Screen.getWidth() * 0.024
@@ -316,7 +309,7 @@ controls:
       point: ~middle_center
       visible: false
       x: Screen.getWidth() * -0.0700
-      y: Screen.getHeight() * 0.1070
+      y: Screen.getHeight() * 0.0430
       width: Screen.getWidth() * 0.0990
       height: Screen.getHeight() * 0.0550
       normal: ~38,44,64,235
@@ -341,8 +334,8 @@ controls:
     attribute:
       point: ~middle_center
       visible: false
-      x: Screen.getWidth() * -0.2050
-      y: Screen.getHeight() * 0.1900
+      x: Screen.getWidth() * -0.1115
+      y: Screen.getHeight() * 0.1100
       width: Screen.getWidth() * 0.1150
       height: Screen.getHeight() * 0.0550
       fontSize: Screen.getWidth() * 0.024
@@ -356,7 +349,7 @@ controls:
       point: ~middle_center
       visible: false
       x: Screen.getWidth() * -0.0700
-      y: Screen.getHeight() * 0.1820
+      y: Screen.getHeight() * 0.1180
       width: Screen.getWidth() * 0.0990
       height: Screen.getHeight() * 0.0550
       normal: ~38,44,64,235
@@ -375,14 +368,28 @@ controls:
         width: 1
         color: ~96,208,200,150
 
-  hs_b2r:
-    val: "hs_b2r"
+  hs_l7:
+    val: "hs_l7"
+    type: Text
+    attribute:
+      point: ~middle_center
+      visible: false
+      x: Screen.getWidth() * -0.1115
+      y: Screen.getHeight() * 0.1850
+      width: Screen.getWidth() * 0.1150
+      height: Screen.getHeight() * 0.0550
+      fontSize: Screen.getWidth() * 0.024
+      texts:
+        - ~&7HUD 位置
+
+  hs_b7:
+    val: "hs_b7"
     type: Texture
     attribute:
       point: ~middle_center
       visible: false
-      x: Screen.getWidth() * 0.0380
-      y: Screen.getHeight() * -0.1180
+      x: Screen.getWidth() * -0.1115
+      y: Screen.getHeight() * 0.1930
       width: Screen.getWidth() * 0.0990
       height: Screen.getHeight() * 0.0550
       normal: ~38,44,64,235
@@ -390,25 +397,25 @@ controls:
       shape: ~round_rect
       radius: 4
       texts:
-        - ~&f→
-      fontSize: Screen.getWidth() * 0.0220
+        - ~&f靠左
+      fontSize: Screen.getWidth() * 0.024
       center: true
     action:
       click: |-
-        Packet.send('starpact:hud_move:40:0')
+        Packet.send('starpact:hud_align:LEFT')
     effect:
       stroke:
         width: 1
         color: ~96,208,200,150
 
-  hs_b3r:
-    val: "hs_b3r"
+  hs_b7r:
+    val: "hs_b7r"
     type: Texture
     attribute:
       point: ~middle_center
       visible: false
-      x: Screen.getWidth() * 0.0380
-      y: Screen.getHeight() * -0.0430
+      x: Screen.getWidth() * -0.1115
+      y: Screen.getHeight() * 0.1930
       width: Screen.getWidth() * 0.0990
       height: Screen.getHeight() * 0.0550
       normal: ~38,44,64,235
@@ -416,12 +423,12 @@ controls:
       shape: ~round_rect
       radius: 4
       texts:
-        - ~&f↓
-      fontSize: Screen.getWidth() * 0.0220
+        - ~&f靠右
+      fontSize: Screen.getWidth() * 0.024
       center: true
     action:
       click: |-
-        Packet.send('starpact:hud_move:0:40')
+        Packet.send('starpact:hud_align:RIGHT')
     effect:
       stroke:
         width: 1
@@ -434,7 +441,7 @@ controls:
       point: ~middle_center
       visible: false
       x: Screen.getWidth() * 0.0380
-      y: Screen.getHeight() * 0.1070
+      y: Screen.getHeight() * 0.0430
       width: Screen.getWidth() * 0.0990
       height: Screen.getHeight() * 0.0550
       normal: ~38,44,64,235
@@ -460,7 +467,7 @@ controls:
       point: ~middle_center
       visible: false
       x: Screen.getWidth() * 0.0380
-      y: Screen.getHeight() * 0.1820
+      y: Screen.getHeight() * 0.1180
       width: Screen.getWidth() * 0.0990
       height: Screen.getHeight() * 0.0550
       normal: ~38,44,64,235
@@ -485,8 +492,8 @@ controls:
     attribute:
       point: ~middle_center
       visible: false
-      x: Screen.getWidth() * 0.1500
-      y: Screen.getHeight() * 0.1150
+      x: Screen.getWidth() * -0.1115
+      y: Screen.getHeight() * 0.0350
       width: Screen.getWidth() * 0.1000
       height: Screen.getHeight() * 0.0550
       fontSize: Screen.getWidth() * 0.024
@@ -499,8 +506,8 @@ controls:
     attribute:
       point: ~middle_center
       visible: false
-      x: Screen.getWidth() * 0.1500
-      y: Screen.getHeight() * 0.1900
+      x: Screen.getWidth() * -0.1115
+      y: Screen.getHeight() * 0.1100
       width: Screen.getWidth() * 0.1000
       height: Screen.getHeight() * 0.0550
       fontSize: Screen.getWidth() * 0.024

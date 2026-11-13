@@ -74,11 +74,31 @@ public final class BossBarFallback {
         return BarColor.PURPLE;
     }
 
+    /**
+     * 清掉该玩家的降级 BossBar。
+     *
+     * <p>除了移除 map 里登记的那条，还要兜底扫一遍 {@link Bukkit#getBossBars()}：
+     * 如果 bar 因为 reload / 重连等原因脱管（map 已清空但玩家身上还挂着），
+     * 只靠 map 会漏掉，表现为「AX HUD 正常显示，顶部却多出一条进度条」。
+     */
     public void hide(Player player) {
         BossBar bar = bars.remove(player.getUniqueId());
         if (bar != null) {
+            // 先摘玩家再隐藏：只 setVisible(false) 有时不会立刻同步到客户端
+            bar.removePlayer(player);
             bar.removeAll();
             bar.setVisible(false);
+        }
+        // 兜底：把所有仍挂着该玩家的 BossBar 都摘掉
+        java.util.Iterator<org.bukkit.boss.KeyedBossBar> it = Bukkit.getBossBars();
+        while (it.hasNext()) {
+            BossBar b = it.next();
+            if (b.getPlayers().contains(player)) {
+                b.removePlayer(player);
+                if (b.getPlayers().isEmpty()) {
+                    b.setVisible(false);
+                }
+            }
         }
     }
 
@@ -86,12 +106,14 @@ public final class BossBarFallback {
         BossBar bar = bars.remove(id);
         if (bar != null) {
             bar.removeAll();
+            bar.setVisible(false);
         }
     }
 
     public void clear() {
         for (BossBar bar : bars.values()) {
             bar.removeAll();
+            bar.setVisible(false);
         }
         bars.clear();
     }

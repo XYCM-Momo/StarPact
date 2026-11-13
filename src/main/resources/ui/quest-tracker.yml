@@ -32,20 +32,45 @@ ui:
   isHud: "true"
   level: "0"
   show: "true"
-  defaultOpen: true
-  screenScale: true
+  defaultOpen: false
+  screenScale: false
   through: "true"
 
   packetHandler:
     sync: |-
-      var.px = packet['x']
+      var.pAlpha = packet['alpha']
+
+      if (packet['anim'] > 0.5) {
+        val.frame.fadePhase = 1
+        val.frame.fadeProg = 0
+        val.panel.alpha = 0
+        val.frame.alpha = 0
+        val.header.alpha = 0
+        val.s0.alpha = 0
+        val.divider.alpha = 0
+      }
+      val.frame.targetAlpha = var.pAlpha
+      var.sw = Screen.getWidth()
+      var.edge = 0
+      var.ratio = var.sw / 640
+      var.wantW = packet['w'] * var.ratio
+      var.maxW = var.sw - var.edge * 2
+      var.fit = Math.min(1, var.maxW / Math.max(1, var.wantW))
+      var.w = var.wantW * var.fit
+      var.align = packet['align']
+      var.rightX = var.sw - var.w - var.edge
+      var.rightX = Math.max(var.edge, var.rightX)
+      var.px = var.edge
+      var.px = var.px + (var.rightX - var.px) * (var.align == 'RIGHT')
+      var.px = var.px + (packet['x'] - var.px) * (var.align == 'NONE')
+      var.isRight = var.align == 'RIGHT'
+      var.px = var.px + var.aOff
       var.py = packet['y']
-      var.w = packet['w']
-      var.h = packet['h']
-      var.pad = packet['padX']
-      var.top = packet['topPad']
-      var.rowH = packet['rowH']
-      var.gap = packet['rowGap']
+      var.h = packet['h'] * var.fit * var.ratio
+      var.pad = packet['padX'] * var.fit * var.ratio
+      var.top = packet['topPad'] * var.fit * var.ratio
+      var.rowH = packet['rowH'] * var.fit * var.ratio
+      var.gap = packet['rowGap'] * var.fit * var.ratio
 
       val.panel.width = var.w
       val.panel.height = var.h
@@ -59,36 +84,50 @@ ui:
       val.frame.y = var.py
 
       val.header.width = var.w - var.pad * 2
-      val.header.fontSize = packet['fsTitle']
+      val.header.fontSize = packet['fsTitle'] * var.fit * var.ratio
       val.header.visible = packet['show']
+      val.header.texts = [packet['head']]
       val.header.x = var.px + var.pad
       val.header.y = var.py + var.top
 
       val.s0.width = var.w - var.pad * 2
-      val.s0.fontSize = packet['fsBody']
-      val.s0.lineSpace = packet['fsLine']
+      val.s0.fontSize = packet['fsBody'] * var.fit * var.ratio
+      val.s0.lineSpace = packet['fsLine'] * var.fit * var.ratio
       val.s0.visible = packet['v0']
       val.s0.x = var.px + var.pad
       val.s0.y = var.py + var.top + var.gap
-      val.s0.texts = [packet['t0'], packet['b0']]
+      val.s0.texts = [packet['t0']]
 
       val.s1.width = var.w - var.pad * 2
-      val.s1.fontSize = packet['fsBody']
-      val.s1.lineSpace = packet['fsLine']
+      val.s1.fontSize = packet['fsBody'] * var.fit * var.ratio
+      val.s1.lineSpace = packet['fsLine'] * var.fit * var.ratio
       val.s1.visible = packet['v1']
       val.s1.x = var.px + var.pad
       val.s1.y = var.py + var.top + var.gap + var.rowH
       val.s1.texts = [packet['t1'], packet['b1']]
 
       val.s2.width = var.w - var.pad * 2
-      val.s2.fontSize = packet['fsBody']
-      val.s2.lineSpace = packet['fsLine']
+      val.s2.fontSize = packet['fsBody'] * var.fit * var.ratio
+      val.s2.lineSpace = packet['fsLine'] * var.fit * var.ratio
       val.s2.visible = packet['v2']
       val.s2.x = var.px + var.pad
       val.s2.y = var.py + var.top + var.gap + var.rowH * 2
       val.s2.texts = [packet['t2'], packet['b2']]
 
-      val.hint.fontSize = packet['fsHint']
+      val.hint.fontSize = packet['fsHint'] * var.fit * var.ratio
+
+      val.divider.width = (var.w - var.pad * 2) * 0.55
+      val.divider.x = var.px + var.pad
+      val.divider.y = var.py + var.top + var.gap - 6
+      val.divider.visible = packet['show']
+      val.frame.baseX = val.frame.x
+      val.frame.baseY = val.frame.y
+      val.panel.baseX = val.panel.x
+      val.header.baseX = val.header.x
+      val.s0.baseX = val.s0.x
+      val.divider.baseX = val.divider.x
+      Packet.send('starpact:hud_probe:sw=' + var.sw + ',edge=' + var.edge + ',px=' + var.px + ',realX=' + val.panel.x + ',align=' + var.align + ',w=' + var.w)
+
 
     edit: |-
       val.hint.visible = true
@@ -113,7 +152,7 @@ controls:
       y: 170
       width: 380
       height: 250
-      normal: ~14,16,24,175
+      normal: ~0,0,0,0
       shape: ~round_rect
       radius: 8
 
@@ -131,10 +170,18 @@ controls:
       normal: ~0,0,0,0
       shape: ~round_rect
       radius: 8
-    effect:
-      stroke:
-        width: 3
-        color: ~96,208,200,220
+
+  divider:
+    val: "divider"
+    type: Texture
+    attribute:
+      point: ~top_left
+      visible: false
+      x: 19
+      y: 205
+      width: 348
+      height: 1
+      normal: ~72,190,185,150
 
   header:
     val: "header"
@@ -219,3 +266,50 @@ controls:
       visible: false
       texts:
         - ~&e拖动调整位置
+
+# ══════════════════════════════════════════════════════════════
+# 入场动画驱动
+# ══════════════════════════════════════════════════════════════
+# sync 只在数据变化时执行一次，而 Slide/Fade 需要「按帧取当前值」，
+# 所以动画对象挂在 frame 控件上（sync 里创建），由这里每 40ms 求值一次。
+# 不这么做的话，动画只会在 sync 那一瞬间求值一次，表现为卡住不动。
+
+tasks:
+  hud_fade:
+    type: loop
+    time: 0
+    cycle: 40
+    run: |-
+      var.ph = 0
+      if (val.frame.fadePhase != null) {
+        var.ph = val.frame.fadePhase
+      }
+      var.pg = 0
+      if (val.frame.fadeProg != null) {
+        var.pg = val.frame.fadeProg
+      }
+      var.alp = 1
+      var.nph = 0
+      var.npg = 0
+      var.isIn = var.ph == 1
+      if (var.isIn) {
+        var.alp = var.pg / 400
+        var.nph = 1
+        var.npg = var.pg + 40
+      }
+      var.done = var.npg >= 400
+      if (var.done) {
+        var.nph = 0
+        var.npg = 0
+      }
+      var.isIdle = var.nph == 0
+      if (var.isIdle) {
+        var.alp = 1
+      }
+      val.frame.fadePhase = var.nph
+      val.frame.fadeProg = var.npg
+      val.panel.alpha = var.alp
+      val.frame.alpha = var.alp
+      val.header.alpha = var.alp
+      val.s0.alpha = var.alp
+      val.divider.alpha = var.alp

@@ -44,9 +44,20 @@ public final class PlayerPrefs {
         public volatile double leftRatio = 0.30;
         /** 玩家是否自定义过位置（否则用 config 的默认值） */
         public volatile boolean custom;
+        /** 当前追踪的任务 ID；null = 没追踪，HUD 不显示任何任务 */
+        public volatile String trackedId;
+        /**
+         * HUD 水平吸附：{@code LEFT} / {@code RIGHT} / {@code NONE}。
+         *
+         * <p>{@code NONE} = 用玩家自己拖出来的位置（x 字段）。
+         * 选左/右之后会自动吸附到屏幕边缘，窗口缩放也不会跑偏。
+         */
+        public volatile String align = "LEFT";
 
         Pref(int x, int y, boolean visible, boolean custom, double scale, double uiScale, int hudW, int hudH,
-             double panelAlpha, double leftRatio) {
+             double panelAlpha, double leftRatio, String trackedId, String align) {
+            this.trackedId = trackedId;
+            this.align = (align == null || align.isBlank()) ? "LEFT" : align;
             this.x = x;
             this.y = y;
             this.visible = visible;
@@ -98,7 +109,10 @@ public final class PlayerPrefs {
             double panelAlpha = section.getDouble(key + ".panelAlpha", 1.0);
             double leftRatio = section.getDouble(key + ".leftRatio",
                     plugin.spConfig().panelLeftRatio());
-            prefs.put(id, new Pref(x, y, visible, custom, scale, uiScale, hudW, hudH, panelAlpha, leftRatio));
+            String trackedId = section.getString(key + ".tracked", null);
+            String align = section.getString(key + ".align", "LEFT");
+            prefs.put(id, new Pref(x, y, visible, custom, scale, uiScale, hudW, hudH,
+                    panelAlpha, leftRatio, trackedId, align));
         }
         plugin.getLogger().info("已加载 " + prefs.size() + " 名玩家的 HUD 个人设置");
     }
@@ -109,7 +123,8 @@ public final class PlayerPrefs {
                 new Pref(plugin.spConfig().offsetX(), plugin.spConfig().offsetY(), true, false,
                         plugin.spConfig().defaultScale(), 1.0,
                         plugin.spConfig().width(), 0,
-                        plugin.spConfig().defaultPanelAlpha(), plugin.spConfig().panelLeftRatio()));
+                        plugin.spConfig().defaultPanelAlpha(), plugin.spConfig().panelLeftRatio(),
+                        null, "LEFT"));
     }
 
     public void setPosition(UUID id, int x, int y) {
@@ -162,6 +177,24 @@ public final class PlayerPrefs {
         dirty = true;
     }
 
+    /** 设置 HUD 吸附方向：LEFT / RIGHT / NONE。 */
+    public void setAlign(UUID id, String align) {
+        Pref p = of(id);
+        p.align = (align == null || align.isBlank()) ? "NONE" : align.toUpperCase(java.util.Locale.ROOT);
+        // 选了吸附就不再算「自定义位置」，否则 flush 会跳过保存
+        if (!"NONE".equals(p.align)) {
+            p.custom = true;
+        }
+        dirty = true;
+    }
+
+    /** 设置追踪中的任务；null 表示取消追踪。 */
+    public void setTracked(UUID id, String questId) {
+        Pref p = of(id);
+        p.trackedId = questId;
+        dirty = true;
+    }
+
     public void resetPosition(UUID id) {
         Pref p = of(id);
         p.x = plugin.spConfig().offsetX();
@@ -183,7 +216,8 @@ public final class PlayerPrefs {
         for (var e : prefs.entrySet()) {
             // 只存玩家真正改过的，避免文件随玩家数膨胀
             Pref p = e.getValue();
-            if (!p.custom && p.visible) {
+            boolean hasAlign = p.align != null && !"NONE".equals(p.align);
+            if (!p.custom && p.visible && p.trackedId == null && !hasAlign) {
                 continue;
             }
             String base = "players." + e.getKey();
@@ -197,6 +231,8 @@ public final class PlayerPrefs {
             yml.set(base + ".hudH", p.hudH);
             yml.set(base + ".panelAlpha", p.panelAlpha);
             yml.set(base + ".leftRatio", p.leftRatio);
+            yml.set(base + ".tracked", p.trackedId);
+            yml.set(base + ".align", p.align);
         }
         try {
             if (!plugin.getDataFolder().exists() && !plugin.getDataFolder().mkdirs()) {

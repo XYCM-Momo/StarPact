@@ -4,7 +4,7 @@ main: com.asterovie.momo.starpact.server.StarPactPlugin
 api-version: '1.20'
 authors: ['星野尘梦工作室 · 默默']
 description: 星契 — Chemdah 任务追踪 HUD（ArcartX 界面）
-softdepend: [ArcartX, Chemdah, PlaceholderAPI, Adyeshach]
+softdepend: [ArcartX, Chemdah, PlaceholderAPI, Adyeshach, MythicMobs, NeigeItems]
 
 commands:
   starpact:

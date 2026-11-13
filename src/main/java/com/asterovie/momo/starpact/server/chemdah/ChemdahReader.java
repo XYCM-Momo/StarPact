@@ -114,9 +114,15 @@ final class ChemdahReader {
             }
             percent = Math.max(0, Math.min(1, percent));
 
+            long startTime = 0L;
+            try {
+                startTime = quest.getStartTime();
+            } catch (Throwable ignored) {
+                // 拿不到就当 0，退化成「只看 id」的旧行为
+            }
             out.add(new TrackEntry(
                     quest.getId(), task.getId(), title, Texts.strip(title),
-                    value, target, percent, completed));
+                    value, target, percent, completed, startTime));
         }
     }
 
@@ -187,14 +193,17 @@ final class ChemdahReader {
                 return out;
             }
             for (var quest : profile.getQuests(false)) {
-                if (quest == null || !quest.isValid() || quest.isCompleted()) {
+                if (quest == null) {
+                    continue;
+                }
+                if (!quest.isValid() || quest.isCompleted()) {
                     continue;
                 }
                 try {
                     out.add(toInfo(quest, profile));
                 } catch (Throwable t) {
-                    player.getServer().getLogger()
-                            .fine("[StarPact] 读取任务 " + quest.getId() + " 失败: " + t);
+                    player.getServer().getLogger().warning(
+                            "[StarPact] 读取任务 " + safeId(quest) + " 失败: " + t);
                 }
             }
             out.sort(Comparator.comparingLong(q -> {
@@ -264,8 +273,9 @@ final class ChemdahReader {
                     if (s.contains("支线") || s.contains("间章") || s.contains("side")) {
                         return "jian";
                     }
-                    if (s.contains("每日") || s.contains("活动") || s.contains("限时")
-                            || s.contains("daily") || s.contains("event")) {
+                    // 残流：Chemdah 里配 meta.type: 残流 的任务归这一页
+                    if (s.contains("残流") || s.contains("每日") || s.contains("活动")
+                            || s.contains("限时") || s.contains("daily") || s.contains("event")) {
                         return "can";
                     }
                     if (s.contains("主线") || s.contains("时序") || s.contains("main")) {
@@ -351,6 +361,16 @@ final class ChemdahReader {
             // 没有奖励配置
         }
         return out;
+    }
+
+    /** 安全取任务 ID（反射失败也不抛）。 */
+    private static String safeId(Object quest) {
+        try {
+            Object v = quest.getClass().getMethod("getId").invoke(quest);
+            return String.valueOf(v);
+        } catch (Throwable t) {
+            return "<unknown>";
+        }
     }
 
     private static double asDouble(Object o) {

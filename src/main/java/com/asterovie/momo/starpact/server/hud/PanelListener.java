@@ -39,11 +39,6 @@ public final class PanelListener implements Listener {
             return;
         }
         String id = event.getId();
-        if (plugin.spConfig().debug()) {
-            plugin.getLogger().info("[包] " + player.getName()
-                    + " id=" + id
-                    + " data=" + event.getData());
-        }
         if (id == null || !id.startsWith(PREFIX)) {
             return;
         }
@@ -78,6 +73,7 @@ public final class PanelListener implements Listener {
             case "hudset_ready" -> plugin.panel().pushHudSettings(player);
             case "hudset_close" -> plugin.panel().onHudPanelClose(player);
             case "hud_toggle" -> plugin.panel().onToggleHud(player);
+            case "track" -> plugin.panel().onToggleTrack(player);
             case "hud_scale" -> {
                 int d = (arg == null) ? 0 : Integer.parseInt(arg.trim());
                 plugin.panel().onScaleHud(player, d);
@@ -87,6 +83,12 @@ public final class PanelListener implements Listener {
                 plugin.panel().onHudWidth(player, d);
             }
             case "hud_reset" -> plugin.panel().onResetHud(player);
+            case "hud_y" -> {
+                double v = arg == null ? 0 : Double.parseDouble(arg.trim());
+                plugin.panel().onHudY(player, v);
+            }
+            case "hud_align" -> plugin.panel().onAlignHud(player, arg);            case "hud_yscroll" -> {                double d = arg == null ? 0 : Double.parseDouble(arg.trim());                plugin.panel().onHudYScroll(player, d);            }
+            case "hud_probe" -> plugin.getLogger().info("[HUD探测] " + player.getName() + " " + arg);
             case "hud_move" -> {
                 int dx = 0, dy = 0;
                 if (arg != null) {
@@ -111,8 +113,28 @@ public final class PanelListener implements Listener {
                 int d = (arg == null) ? 0 : Integer.parseInt(arg.trim());
                 plugin.panel().onLeftRatio(player, d);
             }
+            // 详情区滚轮：starpact:scroll:<方向>
+            // Aria 的 wheelValue 向下滚是正、向上滚是负；
+            // 玩家的直觉是「向上滚 = 看更前面的内容」，所以这里取反。
+            case "scroll" -> {
+                double raw = 0;
+                if (arg != null) {
+                    try {
+                        raw = Double.parseDouble(arg.trim());
+                    } catch (NumberFormatException ignored) {
+                        raw = 0;
+                    }
+                }
+                int step = (int) -Math.signum(raw);
+                plugin.panel().onScrollDetail(player, step);
+            }
             // 左栏选中任务：starpact:quest:<任务ID>
             case "quest" -> plugin.panel().onSelectQuest(player, arg);
+            // 左栏固定行点击：starpact:row:<行号>，由服务端换算成任务 ID
+            case "row" -> {
+                int idx = (arg == null) ? -1 : Integer.parseInt(arg.trim());
+                plugin.panel().onSelectRow(player, idx);
+            }
         }
     }
 

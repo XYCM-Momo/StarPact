@@ -7,18 +7,30 @@ plugins {
 def pluginYmlFile = file('src/main/resources/plugin.yml')
 def versionMatcher = pluginYmlFile.text =~ /(?m)^version:\s*['"]?([^'"\s]+)['"]?\s*$/
 version = versionMatcher.find() ? versionMatcher.group(1) : '0.0.0'
-group = 'com.asterovie.momo'
+group = 'com.asterovie.momo.starpact'
+
+// Chemdah / ArcartX 都是闭源插件，公共仓库里没有，
+// 直接用 StarPact 工作区里那两份 jar 编译（compileOnly，不打包进我们的 jar）。
+def chemdahJarFile = file(chemdah_jar)
+if (!chemdahJarFile.exists()) {
+    throw new GradleException(
+        "找不到 Chemdah jar：${chemdahJarFile}\n" +
+        "请把 gradle.properties 里的 chemdah_jar 改成工作区里实际的 Chemdah-*.jar 路径。")
+}
+
+def arcartxJarFile = file(arcartx_jar)
+if (!arcartxJarFile.exists()) {
+    throw new GradleException(
+        "找不到 ArcartX jar：${arcartxJarFile}\n" +
+        "请把 gradle.properties 里的 arcartx_jar 改成工作区里实际的 ArcartX-*.jar 路径。")
+}
 
 repositories {
     mavenCentral()
-    maven { url = 'https://repo.papermc.io/repository/maven-public/' }
-}
-
-dependencies {
-    compileOnly "io.papermc.paper:paper-api:1.20.1-R0.1-SNAPSHOT"
-    // Chemdah / ArcartX 都是闭源插件，公共仓库里没有。
-    // 把对应的 jar 放进 libs/ 即可编译（compileOnly，不会打包进我们的 jar）。
-    compileOnly fileTree(dir: 'libs', include: ['*.jar'])
+    maven {
+        name = 'papermc'
+        url = 'https://repo.papermc.io/repository/maven-public/'
+    }
 }
 
 java {
@@ -27,24 +39,35 @@ java {
     }
 }
 
+dependencies {
+    // Paper API：编译期用，不打包进 jar（服务端自带）
+    compileOnly "io.papermc.paper:paper-api:${paper_api_version}"
+    compileOnly files(chemdahJarFile)
+    compileOnly files(arcartxJarFile)
+}
+
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
 }
 
-processResources {
-    filesMatching('plugin.yml') {
-        expand(version: version)
-    }
-}
-
-jar {
+tasks.named('jar', Jar).configure {
     archiveBaseName = 'StarPact-Plugin'
+    // 可复现构建：同样源码 => 逐字节相同的 jar（和 StarTrail 保持一致）
     preserveFileTimestamps = false
     reproducibleFileOrder = true
     manifest {
         attributes(
-            'Implementation-Title': 'StarPact',
-            'Implementation-Version': project.version
+                'Implementation-Title': 'StarPact Plugin',
+                'Implementation-Version': project.version
         )
+    }
+}
+
+// 编译完顺手报一下产物，方便确认
+tasks.register('showJar') {
+    dependsOn tasks.named('jar')
+    doLast {
+        def f = tasks.named('jar').get().archiveFile.get().asFile
+        println "产物: ${f}  (${f.length()} 字节)"
     }
 }

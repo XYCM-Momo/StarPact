@@ -233,14 +233,17 @@ public final class AxHook {
         }
     }
 
-    public void open(Player player, String id) {
+    /** 打开 UI，返回是否成功（失败时调用方要重试）。 */
+    public boolean open(Player player, String id) {
         if (!available) {
-            return;
+            return false;
         }
         try {
             mOpen.invoke(registry, player, id);
+            return true;
         } catch (Throwable t) {
-            plugin.getLogger().fine("打开 ArcartX UI 失败: " + unwrap(t));
+            plugin.getLogger().warning("打开 ArcartX UI 失败: " + unwrap(t));
+            return false;
         }
     }
 
@@ -290,6 +293,113 @@ public final class AxHook {
                     .invoke(sender, player, name, value);
         } catch (Throwable t) {
             plugin.getLogger().fine("发送 ArcartX 变量失败: " + unwrap(t));
+        }
+    }
+
+    /**
+     * 给 UI 里的 Slot 控件设置物品。
+     *
+     * <p>走 {@code NetworkMessageSender.sendSlotItemStack(Player, String, ItemStack)}，
+     * 第一个 String 是控件的 val 名。
+     */
+    /**
+     * 把物品推到 UI 的 Slot 格子上（仅客户端显示，不写入服务端数据）。
+     *
+     * <p>不能用 {@code NetworkMessageSender.sendSlotItemStack}——那是底层裸包，
+     * Extra 槽位的客户端会拿缓存数据覆盖回去，表现为「发了但看不见」。
+     * 正确入口是 {@code ArcartXPlayer.setSlotItemStackOnlyClient}：
+     * 只下发给客户端渲染，不落 SQLITE，玩家也取不出来，正好用于奖励预览。
+     */
+    public boolean sendSlotItem(Player player, String slotId, org.bukkit.inventory.ItemStack item) {
+        if (!available || item == null) {
+            return false;
+        }
+        try {
+            Object axPlayer = axPlayer(player);
+            if (axPlayer == null) {
+                return false;
+            }
+            axPlayer.getClass()
+                    .getMethod("setSlotItemStack", String.class,
+                            org.bukkit.inventory.ItemStack.class)
+                    .invoke(axPlayer, slotId, item);
+            return true;
+        } catch (Throwable t) {
+            plugin.getLogger().warning("发送 Slot 物品失败: " + unwrap(t));
+            return false;
+        }
+    }
+
+    /** 清空 Slot 格子（同样只影响客户端显示）。 */
+    public void clearSlotItem(Player player, String slotId) {
+        if (!available) {
+            return;
+        }
+        try {
+            Object axPlayer = axPlayer(player);
+            if (axPlayer == null) {
+                return;
+            }
+            axPlayer.getClass()
+                    .getMethod("removeSlotItemStackOnlyClient", String.class, boolean.class)
+                    .invoke(axPlayer, slotId, false);
+        } catch (Throwable t) {
+            plugin.getLogger().warning("清空 Slot 物品失败: " + unwrap(t));
+        }
+    }
+
+    /** 回读服务端缓存里的槽位物品（诊断用）。 */
+    public String readSlotItem(Player player, String slotId) {
+        if (!available) {
+            return null;
+        }
+        try {
+            Object axPlayer = axPlayer(player);
+            if (axPlayer == null) {
+                return null;
+            }
+            Object v = axPlayer.getClass()
+                    .getMethod("getSlotItemStack", String.class)
+                    .invoke(axPlayer, slotId);
+            if (v instanceof org.bukkit.inventory.ItemStack s) {
+                return s.getType() + " x" + s.getAmount();
+            }
+            return "null";
+        } catch (Throwable t) {
+            return "ERR " + unwrap(t);
+        }
+    }
+
+    /** 让客户端按最新槽位缓存重渲染一遍。 */
+    public void syncSlots(Player player) {
+        if (!available) {
+            return;
+        }
+        try {
+            Object axPlayer = axPlayer(player);
+            if (axPlayer == null) {
+                return;
+            }
+            axPlayer.getClass().getMethod("syncSlotCacheToClient").invoke(axPlayer);
+        } catch (Throwable t) {
+            plugin.getLogger().fine("同步槽位缓存失败: " + unwrap(t));
+        }
+    }
+
+    /** 取 ArcartXPlayer 实例；拿不到返回 null。 */
+    private Object axPlayer(Player player) {
+        try {
+            Class<?> apiClass = Class.forName("priv.seventeen.artist.arcartx.api.ArcartXAPI");
+            Object em = apiClass.getMethod("getEntityManager").invoke(null);
+            if (em == null) {
+                return null;
+            }
+            return em.getClass()
+                    .getMethod("getPlayer", Player.class)
+                    .invoke(em, player);
+        } catch (Throwable t) {
+            plugin.getLogger().fine("获取 ArcartXPlayer 失败: " + unwrap(t));
+            return null;
         }
     }
 

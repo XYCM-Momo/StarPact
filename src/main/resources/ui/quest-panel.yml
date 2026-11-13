@@ -22,6 +22,9 @@
 # ══════════════════════════════════════════════════════════
 
 ui:
+  # 命中插件打开的奖励容器，把它替换成本面板
+  match:
+    - "StarPactRewards"
   isHud: "false"
   background: true
   escClose: true
@@ -39,7 +42,8 @@ ui:
     sync: |-
       val.page_name.texts = [packet['page_name']]
 
-      val.quest_list.texts = packet['quest_lines']
+
+
       val.detail.texts = packet['detail_lines']
       val.reward.texts = packet['reward_lines']
       val.tab_shixu_bg.visible = packet['tab_shixu_on']
@@ -73,10 +77,38 @@ ui:
       var.DETAIL_W = var.SW - var.DETAIL_X - var.PAD
       var.CONTENT_Y = var.TOP_H + var.SW * 0.015
       var.CONTENT_H = var.SH - var.CONTENT_Y - var.PAD
-      var.REWARD_H = var.SH * 0.085
-      var.REWARD_Y = var.SH - var.REWARD_H - var.PAD
-      var.RTITLE_Y = var.REWARD_Y - var.SH * 0.060
-      var.DETAIL_H = var.RTITLE_Y - var.CONTENT_Y - var.SW * 0.008
+      var.RLINE = var.SH * 0.0518
+      var.RPAD = var.SH * 0.015
+      var.SLOT_GAP = var.SW * 0.012
+      var.SLOT_PREF = var.SH * 0.1150
+      var.SLOT_SZ = Math.min(var.SLOT_PREF, (var.DETAIL_W - var.SLOT_GAP * 8) / 9)
+      var.REWARD_COLS = Math.max(1, Math.floor((var.DETAIL_W + var.SLOT_GAP) / (var.SLOT_SZ + var.SLOT_GAP)))
+      var.RC0 = 0 % var.REWARD_COLS
+      var.RW0 = Math.floor(0 / var.REWARD_COLS)
+      var.RC1 = 1 % var.REWARD_COLS
+      var.RW1 = Math.floor(1 / var.REWARD_COLS)
+      var.RC2 = 2 % var.REWARD_COLS
+      var.RW2 = Math.floor(2 / var.REWARD_COLS)
+      var.RC3 = 3 % var.REWARD_COLS
+      var.RW3 = Math.floor(3 / var.REWARD_COLS)
+      var.RC4 = 4 % var.REWARD_COLS
+      var.RW4 = Math.floor(4 / var.REWARD_COLS)
+      var.RC5 = 5 % var.REWARD_COLS
+      var.RW5 = Math.floor(5 / var.REWARD_COLS)
+      var.RC6 = 6 % var.REWARD_COLS
+      var.RW6 = Math.floor(6 / var.REWARD_COLS)
+      var.RC7 = 7 % var.REWARD_COLS
+      var.RW7 = Math.floor(7 / var.REWARD_COLS)
+      var.RC8 = 8 % var.REWARD_COLS
+      var.RW8 = Math.floor(8 / var.REWARD_COLS)
+      var.REWARD_ROWS = Math.ceil((packet['reward_rows'] + 0) / var.REWARD_COLS)
+      var.REWARD_ROWS = Math.max(1, var.REWARD_ROWS)
+      var.REWARD_H = var.SLOT_SZ * var.REWARD_ROWS + var.SLOT_GAP * (var.REWARD_ROWS - 1) + var.SH * 0.012
+      var.RTITLE_H = var.SH * 0.052
+      var.RGAP = var.SH * 0.020
+      var.REWARD_TOP = var.SH - var.PAD - var.REWARD_H
+      var.RTITLE_TOP = var.REWARD_TOP - var.RGAP - var.RTITLE_H
+      var.DETAIL_H = var.RTITLE_TOP - var.CONTENT_Y - var.SW * 0.008
 
       val.tab_shixu.x = var.TAB1_X
       val.tab_jian.x = var.TAB2_X
@@ -134,16 +166,22 @@ ui:
       val.detail.y = var.CONTENT_Y
       val.detail.width = var.DETAIL_W
       val.detail.height = var.DETAIL_H
+      val.detail_scroll.x = var.DETAIL_X
+      val.detail_scroll.y = var.CONTENT_Y
+      val.detail_scroll.width = var.DETAIL_W
+      val.detail_scroll.height = var.DETAIL_H
+      val.detail_scroll.visible = var.ss < 1
       val.reward_title.x = var.DETAIL_X
-      val.reward_title.y = var.RTITLE_Y
+      val.reward_title.y = var.RTITLE_TOP
       val.reward.x = var.DETAIL_X
-      val.reward.y = var.REWARD_Y
+      val.reward.y = var.REWARD_TOP
       val.reward.width = var.DETAIL_W
       val.reward.height = var.REWARD_H
 
       var.ss = packet['show_setting'] + 0
+      var.RR = Math.max(0, Math.min(9, packet['reward_rows'] + 0))
       val.detail.visible = var.ss < 1
-      val.reward.visible = var.ss < 1
+      val.reward.visible = false
       val.reward_title.visible = var.ss < 1
       val.quest_list.visible = var.ss < 1
       val.line_left.visible = var.ss < 1
@@ -164,6 +202,68 @@ ui:
       val.val_content.texts = [packet['set_content_text']]
       val.val_left.texts = [packet['set_left_text']]
       val.quest_list.scale = var.ui
+
+      var.LX = var.PAD
+      var.LY = var.CONTENT_Y
+      var.LW = var.LEFT_W - var.PAD
+      var.LH = var.SH * 0.0620
+      var.LSTEP = var.SH * 0.0720
+      val.q_row0.x = var.LX
+      val.q_row0.y = var.LY + var.LSTEP * 0
+      val.q_row0.width = var.LW
+      val.q_row0.height = var.LH
+      val.q_row0.scale = var.ui
+      val.q_row0.texts = [packet['qr_text0']]
+      val.q_row0.visible = packet['qr_show0'] * (var.ss < 1)
+      val.q_row1.x = var.LX
+      val.q_row1.y = var.LY + var.LSTEP * 1
+      val.q_row1.width = var.LW
+      val.q_row1.height = var.LH
+      val.q_row1.scale = var.ui
+      val.q_row1.texts = [packet['qr_text1']]
+      val.q_row1.visible = packet['qr_show1'] * (var.ss < 1)
+      val.q_row2.x = var.LX
+      val.q_row2.y = var.LY + var.LSTEP * 2
+      val.q_row2.width = var.LW
+      val.q_row2.height = var.LH
+      val.q_row2.scale = var.ui
+      val.q_row2.texts = [packet['qr_text2']]
+      val.q_row2.visible = packet['qr_show2'] * (var.ss < 1)
+      val.q_row3.x = var.LX
+      val.q_row3.y = var.LY + var.LSTEP * 3
+      val.q_row3.width = var.LW
+      val.q_row3.height = var.LH
+      val.q_row3.scale = var.ui
+      val.q_row3.texts = [packet['qr_text3']]
+      val.q_row3.visible = packet['qr_show3'] * (var.ss < 1)
+      val.q_row4.x = var.LX
+      val.q_row4.y = var.LY + var.LSTEP * 4
+      val.q_row4.width = var.LW
+      val.q_row4.height = var.LH
+      val.q_row4.scale = var.ui
+      val.q_row4.texts = [packet['qr_text4']]
+      val.q_row4.visible = packet['qr_show4'] * (var.ss < 1)
+      val.q_row5.x = var.LX
+      val.q_row5.y = var.LY + var.LSTEP * 5
+      val.q_row5.width = var.LW
+      val.q_row5.height = var.LH
+      val.q_row5.scale = var.ui
+      val.q_row5.texts = [packet['qr_text5']]
+      val.q_row5.visible = packet['qr_show5'] * (var.ss < 1)
+      val.q_row6.x = var.LX
+      val.q_row6.y = var.LY + var.LSTEP * 6
+      val.q_row6.width = var.LW
+      val.q_row6.height = var.LH
+      val.q_row6.scale = var.ui
+      val.q_row6.texts = [packet['qr_text6']]
+      val.q_row6.visible = packet['qr_show6'] * (var.ss < 1)
+      val.q_row7.x = var.LX
+      val.q_row7.y = var.LY + var.LSTEP * 7
+      val.q_row7.width = var.LW
+      val.q_row7.height = var.LH
+      val.q_row7.scale = var.ui
+      val.q_row7.texts = [packet['qr_text7']]
+      val.q_row7.visible = packet['qr_show7'] * (var.ss < 1)
       val.detail.scale = var.ui
       val.reward.scale = var.ui
       val.reward_title.scale = var.ui
@@ -171,11 +271,421 @@ ui:
       val.btn_setting.scale = var.ui
       val.btn_close.scale = var.ui
       val.line_left.scale = var.ui
+      val.track_btn.width = var.SW * 0.1300
+      val.track_btn.height = var.SH * 0.0620
+      val.track_btn.x = var.DETAIL_X + var.DETAIL_W - var.SW * 0.1300
+      val.track_btn.y = var.RTITLE_TOP + var.RTITLE_H - var.SH * 0.0620
+      val.track_btn.scale = var.ui
+      val.track_btn.visible = (packet['has_sel'] + 0 > 0) * (var.ss < 1)
+      val.track_btn.tracked = packet['tracked'] + 0
+      val.track_btn_label.texts = [packet['track_text']]
+      val.track_btn_label.x = val.track_btn.x
+      val.track_btn_label.y = val.track_btn.y
+      val.track_btn_label.width = var.SW * 0.1300
+      val.track_btn_label.height = var.SH * 0.0620
+      val.track_btn_label.scale = var.ui
+      val.track_btn_label.visible = val.track_btn.visible
+      val.rw_slot0.visible = (var.RR > 0) * (var.ss < 1)
+      val.rw_num0.visible = 0
+      val.rw_slot1.visible = (var.RR > 1) * (var.ss < 1)
+      val.rw_num1.visible = 0
+      val.rw_slot2.visible = (var.RR > 2) * (var.ss < 1)
+      val.rw_num2.visible = 0
+      val.rw_num0.texts = [packet['rw_amt0']]
+      val.rw_num1.texts = [packet['rw_amt1']]
+      val.rw_num2.texts = [packet['rw_amt2']]
+      val.rw_slot0.x = var.DETAIL_X + (var.SLOT_SZ + var.SLOT_GAP) * (var.RC0)
+      val.rw_slot0.y = var.REWARD_TOP + var.SH * 0.006 + (var.SLOT_SZ + var.SLOT_GAP) * 0
+      val.rw_slot0.width = var.SLOT_SZ
+      val.rw_slot0.height = var.SLOT_SZ
+      val.rw_num0.x = var.DETAIL_X + (var.SLOT_SZ + var.SLOT_GAP) * 0 + var.SLOT_SZ * 0.15
+      val.rw_num0.y = var.REWARD_TOP + var.SH * 0.006 + (var.SLOT_SZ + var.SLOT_GAP) * 0 + var.SLOT_SZ - var.SH * 0.0450 - var.SH * 0.006
+      val.rw_num0.width = var.SLOT_SZ * 0.85
+      val.rw_num0.height = var.SH * 0.0450
+      val.rw_slot1.x = var.DETAIL_X + (var.SLOT_SZ + var.SLOT_GAP) * (var.RC1)
+      val.rw_slot1.y = var.REWARD_TOP + var.SH * 0.006 + (var.SLOT_SZ + var.SLOT_GAP) * 0
+      val.rw_slot1.width = var.SLOT_SZ
+      val.rw_slot1.height = var.SLOT_SZ
+      val.rw_num1.x = var.DETAIL_X + (var.SLOT_SZ + var.SLOT_GAP) * 1 + var.SLOT_SZ * 0.15
+      val.rw_num1.y = var.REWARD_TOP + var.SH * 0.006 + (var.SLOT_SZ + var.SLOT_GAP) * 0 + var.SLOT_SZ - var.SH * 0.0450 - var.SH * 0.006
+      val.rw_num1.width = var.SLOT_SZ * 0.85
+      val.rw_num1.height = var.SH * 0.0450
+      val.rw_slot2.x = var.DETAIL_X + (var.SLOT_SZ + var.SLOT_GAP) * (var.RC2)
+      val.rw_slot2.y = var.REWARD_TOP + var.SH * 0.006 + (var.SLOT_SZ + var.SLOT_GAP) * 0
+      val.rw_slot2.width = var.SLOT_SZ
+      val.rw_slot2.height = var.SLOT_SZ
+      val.rw_num2.x = var.DETAIL_X + (var.SLOT_SZ + var.SLOT_GAP) * 2 + var.SLOT_SZ * 0.15
+      val.rw_num2.y = var.REWARD_TOP + var.SH * 0.006 + (var.SLOT_SZ + var.SLOT_GAP) * 0 + var.SLOT_SZ - var.SH * 0.0450 - var.SH * 0.006
+      val.rw_num2.width = var.SLOT_SZ * 0.85
+      val.rw_num2.height = var.SH * 0.0450
+      val.rw_slot3.x = var.DETAIL_X + (var.SLOT_SZ + var.SLOT_GAP) * (var.RC3)
+      val.rw_slot3.y = var.REWARD_TOP + var.SH * 0.006 + (var.SLOT_SZ + var.SLOT_GAP) * (var.RW3)
+      val.rw_slot3.width = var.SLOT_SZ
+      val.rw_slot3.height = var.SLOT_SZ
+      val.rw_slot3.scale = var.ui
+      val.rw_num3.x = var.DETAIL_X + (var.SLOT_SZ + var.SLOT_GAP) * 3 + var.SLOT_SZ * 0.15
+      val.rw_num3.y = var.REWARD_TOP + var.SH * 0.006 + var.SLOT_SZ - var.SH * 0.0450 - var.SH * 0.006
+      val.rw_num3.width = var.SLOT_SZ * 0.85
+      val.rw_num3.height = var.SH * 0.0450
+      val.rw_num3.scale = var.ui
+      val.rw_slot4.x = var.DETAIL_X + (var.SLOT_SZ + var.SLOT_GAP) * (var.RC4)
+      val.rw_slot4.y = var.REWARD_TOP + var.SH * 0.006 + (var.SLOT_SZ + var.SLOT_GAP) * (var.RW4)
+      val.rw_slot4.width = var.SLOT_SZ
+      val.rw_slot4.height = var.SLOT_SZ
+      val.rw_slot4.scale = var.ui
+      val.rw_num4.x = var.DETAIL_X + (var.SLOT_SZ + var.SLOT_GAP) * 4 + var.SLOT_SZ * 0.15
+      val.rw_num4.y = var.REWARD_TOP + var.SH * 0.006 + var.SLOT_SZ - var.SH * 0.0450 - var.SH * 0.006
+      val.rw_num4.width = var.SLOT_SZ * 0.85
+      val.rw_num4.height = var.SH * 0.0450
+      val.rw_num4.scale = var.ui
+      val.rw_slot5.x = var.DETAIL_X + (var.SLOT_SZ + var.SLOT_GAP) * (var.RC5)
+      val.rw_slot5.y = var.REWARD_TOP + var.SH * 0.006 + (var.SLOT_SZ + var.SLOT_GAP) * (var.RW5)
+      val.rw_slot5.width = var.SLOT_SZ
+      val.rw_slot5.height = var.SLOT_SZ
+      val.rw_slot5.scale = var.ui
+      val.rw_num5.x = var.DETAIL_X + (var.SLOT_SZ + var.SLOT_GAP) * 5 + var.SLOT_SZ * 0.15
+      val.rw_num5.y = var.REWARD_TOP + var.SH * 0.006 + var.SLOT_SZ - var.SH * 0.0450 - var.SH * 0.006
+      val.rw_num5.width = var.SLOT_SZ * 0.85
+      val.rw_num5.height = var.SH * 0.0450
+      val.rw_num5.scale = var.ui
+      val.rw_slot6.x = var.DETAIL_X + (var.SLOT_SZ + var.SLOT_GAP) * (var.RC6)
+      val.rw_slot6.y = var.REWARD_TOP + var.SH * 0.006 + (var.SLOT_SZ + var.SLOT_GAP) * (var.RW6)
+      val.rw_slot6.width = var.SLOT_SZ
+      val.rw_slot6.height = var.SLOT_SZ
+      val.rw_slot6.scale = var.ui
+      val.rw_num6.x = var.DETAIL_X + (var.SLOT_SZ + var.SLOT_GAP) * 6 + var.SLOT_SZ * 0.15
+      val.rw_num6.y = var.REWARD_TOP + var.SH * 0.006 + var.SLOT_SZ - var.SH * 0.0450 - var.SH * 0.006
+      val.rw_num6.width = var.SLOT_SZ * 0.85
+      val.rw_num6.height = var.SH * 0.0450
+      val.rw_num6.scale = var.ui
+      val.rw_slot7.x = var.DETAIL_X + (var.SLOT_SZ + var.SLOT_GAP) * (var.RC7)
+      val.rw_slot7.y = var.REWARD_TOP + var.SH * 0.006 + (var.SLOT_SZ + var.SLOT_GAP) * (var.RW7)
+      val.rw_slot7.width = var.SLOT_SZ
+      val.rw_slot7.height = var.SLOT_SZ
+      val.rw_slot7.scale = var.ui
+      val.rw_num7.x = var.DETAIL_X + (var.SLOT_SZ + var.SLOT_GAP) * 7 + var.SLOT_SZ * 0.15
+      val.rw_num7.y = var.REWARD_TOP + var.SH * 0.006 + var.SLOT_SZ - var.SH * 0.0450 - var.SH * 0.006
+      val.rw_num7.width = var.SLOT_SZ * 0.85
+      val.rw_num7.height = var.SH * 0.0450
+      val.rw_num7.scale = var.ui
+      val.rw_slot8.x = var.DETAIL_X + (var.SLOT_SZ + var.SLOT_GAP) * (var.RC8)
+      val.rw_slot8.y = var.REWARD_TOP + var.SH * 0.006 + (var.SLOT_SZ + var.SLOT_GAP) * (var.RW8)
+      val.rw_slot8.width = var.SLOT_SZ
+      val.rw_slot8.height = var.SLOT_SZ
+      val.rw_slot8.scale = var.ui
+      val.rw_num8.x = var.DETAIL_X + (var.SLOT_SZ + var.SLOT_GAP) * 8 + var.SLOT_SZ * 0.15
+      val.rw_num8.y = var.REWARD_TOP + var.SH * 0.006 + var.SLOT_SZ - var.SH * 0.0450 - var.SH * 0.006
+      val.rw_num8.width = var.SLOT_SZ * 0.85
+      val.rw_num8.height = var.SH * 0.0450
+      val.rw_num8.scale = var.ui
+      val.rw_slot3.visible = (var.RR > 3) * (var.ss < 1)
+      val.rw_num3.visible = 0
+      val.rw_num3.texts = [packet['rw_amt3']]
+      val.rw_slot4.visible = (var.RR > 4) * (var.ss < 1)
+      val.rw_num4.visible = 0
+      val.rw_num4.texts = [packet['rw_amt4']]
+      val.rw_slot5.visible = (var.RR > 5) * (var.ss < 1)
+      val.rw_num5.visible = 0
+      val.rw_num5.texts = [packet['rw_amt5']]
+      val.rw_slot6.visible = (var.RR > 6) * (var.ss < 1)
+      val.rw_num6.visible = 0
+      val.rw_num6.texts = [packet['rw_amt6']]
+      val.rw_slot7.visible = (var.RR > 7) * (var.ss < 1)
+      val.rw_num7.visible = 0
+      val.rw_num7.texts = [packet['rw_amt7']]
+      val.rw_slot8.visible = (var.RR > 8) * (var.ss < 1)
+      val.rw_num8.visible = 0
+      val.rw_num8.texts = [packet['rw_amt8']]
 
       var.pa = packet['panel_alpha'] + 0
       val.bg.alpha = var.pa
       val.content_bg.alpha = var.pa
 
+      val.bg.left_ratio = packet['left_ratio'] + 0
+      val.bg.ui_scale = packet['ui_scale'] + 0
+      val.bg.reward_rows = packet['reward_rows'] + 0
+      val.bg.show_setting = packet['show_setting'] + 0
+
+
+
+tasks:
+  布局自适应:
+    type: loop
+    time: 3000
+    cycle: 200
+    run: |-
+      var.ui = val.bg.ui_scale
+      var.LR_RATIO = val.bg.left_ratio
+      var.ss = val.bg.show_setting
+      var.SW = Screen.getWidth()
+      var.SH = Screen.getHeight()
+      var.PAD = var.SW * 0.014
+      var.ICON = var.SW * 0.048
+      var.ICON_GAP = var.SW * 0.012
+      var.TOP_H = var.SW * 0.075
+      var.SMALL = var.SW * 0.040
+      var.BTN_GAP = var.SW * 0.012
+      var.TAB1_X = var.PAD
+      var.TAB2_X = var.TAB1_X + var.ICON + var.ICON_GAP
+      var.TAB3_X = var.TAB2_X + var.ICON + var.ICON_GAP
+      var.TAB_Y = var.SW * 0.008
+      var.NAME_X = var.TAB3_X + var.ICON + var.ICON_GAP * 2
+      var.CLOSE_X = var.PAD
+      var.SET_X = var.PAD
+      var.LEFT_W = var.SW * var.LR_RATIO
+      var.LIST_X = var.PAD
+      var.DIV_X = var.LIST_X + var.LEFT_W
+      var.DETAIL_X = var.DIV_X + var.PAD
+      var.DETAIL_W = var.SW - var.DETAIL_X - var.PAD
+      var.CONTENT_Y = var.TOP_H + var.SW * 0.015
+      var.CONTENT_H = var.SH - var.CONTENT_Y - var.PAD
+      var.RLINE = var.SH * 0.0518
+      var.RPAD = var.SH * 0.015
+      var.SLOT_GAP = var.SW * 0.012
+      var.SLOT_PREF = var.SH * 0.1150
+      var.SLOT_SZ = Math.min(var.SLOT_PREF, (var.DETAIL_W - var.SLOT_GAP * 8) / 9)
+      var.REWARD_COLS = Math.max(1, Math.floor((var.DETAIL_W + var.SLOT_GAP) / (var.SLOT_SZ + var.SLOT_GAP)))
+      var.RC0 = 0 % var.REWARD_COLS
+      var.RW0 = Math.floor(0 / var.REWARD_COLS)
+      var.RC1 = 1 % var.REWARD_COLS
+      var.RW1 = Math.floor(1 / var.REWARD_COLS)
+      var.RC2 = 2 % var.REWARD_COLS
+      var.RW2 = Math.floor(2 / var.REWARD_COLS)
+      var.RC3 = 3 % var.REWARD_COLS
+      var.RW3 = Math.floor(3 / var.REWARD_COLS)
+      var.RC4 = 4 % var.REWARD_COLS
+      var.RW4 = Math.floor(4 / var.REWARD_COLS)
+      var.RC5 = 5 % var.REWARD_COLS
+      var.RW5 = Math.floor(5 / var.REWARD_COLS)
+      var.RC6 = 6 % var.REWARD_COLS
+      var.RW6 = Math.floor(6 / var.REWARD_COLS)
+      var.RC7 = 7 % var.REWARD_COLS
+      var.RW7 = Math.floor(7 / var.REWARD_COLS)
+      var.RC8 = 8 % var.REWARD_COLS
+      var.RW8 = Math.floor(8 / var.REWARD_COLS)
+      var.REWARD_ROWS = Math.ceil((val.bg.reward_rows + 0) / var.REWARD_COLS)
+      var.REWARD_ROWS = Math.max(1, var.REWARD_ROWS)
+      var.REWARD_H = var.SLOT_SZ * var.REWARD_ROWS + var.SLOT_GAP * (var.REWARD_ROWS - 1) + var.SH * 0.012
+      var.RTITLE_H = var.SH * 0.052
+      var.RGAP = var.SH * 0.020
+      var.REWARD_TOP = var.SH - var.PAD - var.REWARD_H
+      var.RTITLE_TOP = var.REWARD_TOP - var.RGAP - var.RTITLE_H
+      var.DETAIL_H = var.RTITLE_TOP - var.CONTENT_Y - var.SW * 0.008
+      val.tab_shixu.x = var.TAB1_X
+      val.tab_jian.x = var.TAB2_X
+      val.tab_can.x = var.TAB3_X
+      val.tab_shixu.y = var.TAB_Y
+      val.tab_jian.y = var.TAB_Y
+      val.tab_can.y = var.TAB_Y
+      val.tab_shixu.width = var.ICON
+      val.tab_shixu.height = var.ICON
+      val.tab_jian.width = var.ICON
+      val.tab_jian.height = var.ICON
+      val.tab_can.width = var.ICON
+      val.tab_can.height = var.ICON
+      var.BG_PAD = var.ICON * 0.10
+      var.BG_SZ = var.ICON + var.BG_PAD * 2
+      val.tab_shixu_bg.x = var.TAB1_X - var.BG_PAD
+      val.tab_shixu_bg.y = var.TAB_Y - var.BG_PAD
+      val.tab_shixu_bg.width = var.BG_SZ
+      val.tab_shixu_bg.height = var.BG_SZ
+      val.tab_jian_bg.x = var.TAB2_X - var.BG_PAD
+      val.tab_jian_bg.y = var.TAB_Y - var.BG_PAD
+      val.tab_jian_bg.width = var.BG_SZ
+      val.tab_jian_bg.height = var.BG_SZ
+      val.tab_can_bg.x = var.TAB3_X - var.BG_PAD
+      val.tab_can_bg.y = var.TAB_Y - var.BG_PAD
+      val.tab_can_bg.width = var.BG_SZ
+      val.tab_can_bg.height = var.BG_SZ
+      val.tab_shixu.scale = var.ui
+      val.tab_jian.scale = var.ui
+      val.tab_can.scale = var.ui
+      val.page_name.x = var.NAME_X
+      val.page_name.y = var.SW * 0.020
+      val.page_name.width = var.SW * 0.400
+      val.btn_close.x = -var.PAD
+      val.btn_close.y = var.SW * 0.010
+      val.btn_close.width = var.SMALL
+      val.btn_close.height = var.SMALL
+      val.btn_setting.x = -var.PAD - var.SMALL - var.BTN_GAP
+      val.btn_setting.y = var.SW * 0.010
+      val.btn_setting.width = var.SMALL
+      val.btn_setting.height = var.SMALL
+      val.line_top.y = var.TOP_H
+      val.quest_list.x = var.LIST_X
+      val.quest_list.y = var.CONTENT_Y
+      val.quest_list.width = var.LEFT_W - var.PAD
+      val.quest_list.height = var.CONTENT_H
+      val.line_left.x = var.DIV_X
+      val.line_left.y = var.CONTENT_Y
+      val.line_left.height = var.CONTENT_H
+      val.detail.x = var.DETAIL_X
+      val.detail.y = var.CONTENT_Y
+      val.detail.width = var.DETAIL_W
+      val.detail.height = var.DETAIL_H
+      val.detail_scroll.x = var.DETAIL_X
+      val.detail_scroll.y = var.CONTENT_Y
+      val.detail_scroll.width = var.DETAIL_W
+      val.detail_scroll.height = var.DETAIL_H
+      val.reward_title.x = var.DETAIL_X
+      val.reward_title.y = var.RTITLE_TOP
+      val.reward.x = var.DETAIL_X
+      val.reward.y = var.REWARD_TOP
+      val.reward.width = var.DETAIL_W
+      val.reward.height = var.REWARD_H
+      val.quest_list.scale = var.ui
+      var.LX = var.PAD
+      var.LY = var.CONTENT_Y
+      var.LW = var.LEFT_W - var.PAD
+      var.LH = var.SH * 0.0620
+      var.LSTEP = var.SH * 0.0720
+      val.q_row0.x = var.LX
+      val.q_row0.y = var.LY + var.LSTEP * 0
+      val.q_row0.width = var.LW
+      val.q_row0.height = var.LH
+      val.q_row0.scale = var.ui
+      val.q_row1.x = var.LX
+      val.q_row1.y = var.LY + var.LSTEP * 1
+      val.q_row1.width = var.LW
+      val.q_row1.height = var.LH
+      val.q_row1.scale = var.ui
+      val.q_row2.x = var.LX
+      val.q_row2.y = var.LY + var.LSTEP * 2
+      val.q_row2.width = var.LW
+      val.q_row2.height = var.LH
+      val.q_row2.scale = var.ui
+      val.q_row3.x = var.LX
+      val.q_row3.y = var.LY + var.LSTEP * 3
+      val.q_row3.width = var.LW
+      val.q_row3.height = var.LH
+      val.q_row3.scale = var.ui
+      val.q_row4.x = var.LX
+      val.q_row4.y = var.LY + var.LSTEP * 4
+      val.q_row4.width = var.LW
+      val.q_row4.height = var.LH
+      val.q_row4.scale = var.ui
+      val.q_row5.x = var.LX
+      val.q_row5.y = var.LY + var.LSTEP * 5
+      val.q_row5.width = var.LW
+      val.q_row5.height = var.LH
+      val.q_row5.scale = var.ui
+      val.q_row6.x = var.LX
+      val.q_row6.y = var.LY + var.LSTEP * 6
+      val.q_row6.width = var.LW
+      val.q_row6.height = var.LH
+      val.q_row6.scale = var.ui
+      val.q_row7.x = var.LX
+      val.q_row7.y = var.LY + var.LSTEP * 7
+      val.q_row7.width = var.LW
+      val.q_row7.height = var.LH
+      val.q_row7.scale = var.ui
+      val.detail.scale = var.ui
+      val.reward.scale = var.ui
+      val.reward_title.scale = var.ui
+      val.track_btn.width = var.SW * 0.1300
+      val.track_btn.height = var.SH * 0.0620
+      val.track_btn.x = var.DETAIL_X + var.DETAIL_W - var.SW * 0.1300
+      val.track_btn.y = var.RTITLE_TOP + var.RTITLE_H - var.SH * 0.0620
+      val.track_btn.scale = var.ui
+      val.track_btn_label.x = val.track_btn.x
+      val.track_btn_label.y = val.track_btn.y
+      val.track_btn_label.width = var.SW * 0.1300
+      val.track_btn_label.height = var.SH * 0.0620
+      val.track_btn_label.scale = var.ui
+      val.rw_slot0.x = var.DETAIL_X + (var.SLOT_SZ + var.SLOT_GAP) * (var.RC0)
+      val.rw_slot0.y = var.REWARD_TOP + var.SH * 0.006 + (var.SLOT_SZ + var.SLOT_GAP) * (var.RW0)
+      val.rw_slot0.width = var.SLOT_SZ
+      val.rw_slot0.height = var.SLOT_SZ
+      val.rw_slot0.scale = var.ui
+      val.rw_num0.x = var.DETAIL_X + (var.SLOT_SZ + var.SLOT_GAP) * 0 + var.SLOT_SZ * 0.15
+      val.rw_num0.y = var.REWARD_TOP + var.SH * 0.006 + var.SLOT_SZ - var.SH * 0.0450 - var.SH * 0.006
+      val.rw_num0.width = var.SLOT_SZ * 0.85
+      val.rw_num0.height = var.SH * 0.0450
+      val.rw_num0.scale = var.ui
+      val.rw_slot1.x = var.DETAIL_X + (var.SLOT_SZ + var.SLOT_GAP) * (var.RC1)
+      val.rw_slot1.y = var.REWARD_TOP + var.SH * 0.006 + (var.SLOT_SZ + var.SLOT_GAP) * (var.RW1)
+      val.rw_slot1.width = var.SLOT_SZ
+      val.rw_slot1.height = var.SLOT_SZ
+      val.rw_slot1.scale = var.ui
+      val.rw_num1.x = var.DETAIL_X + (var.SLOT_SZ + var.SLOT_GAP) * 1 + var.SLOT_SZ * 0.15
+      val.rw_num1.y = var.REWARD_TOP + var.SH * 0.006 + var.SLOT_SZ - var.SH * 0.0450 - var.SH * 0.006
+      val.rw_num1.width = var.SLOT_SZ * 0.85
+      val.rw_num1.height = var.SH * 0.0450
+      val.rw_num1.scale = var.ui
+      val.rw_slot2.x = var.DETAIL_X + (var.SLOT_SZ + var.SLOT_GAP) * (var.RC2)
+      val.rw_slot2.y = var.REWARD_TOP + var.SH * 0.006 + (var.SLOT_SZ + var.SLOT_GAP) * (var.RW2)
+      val.rw_slot2.width = var.SLOT_SZ
+      val.rw_slot2.height = var.SLOT_SZ
+      val.rw_slot2.scale = var.ui
+      val.rw_num2.x = var.DETAIL_X + (var.SLOT_SZ + var.SLOT_GAP) * 2 + var.SLOT_SZ * 0.15
+      val.rw_num2.y = var.REWARD_TOP + var.SH * 0.006 + var.SLOT_SZ - var.SH * 0.0450 - var.SH * 0.006
+      val.rw_num2.width = var.SLOT_SZ * 0.85
+      val.rw_num2.height = var.SH * 0.0450
+      val.rw_num2.scale = var.ui
+      val.rw_slot3.x = var.DETAIL_X + (var.SLOT_SZ + var.SLOT_GAP) * (var.RC3)
+      val.rw_slot3.y = var.REWARD_TOP + var.SH * 0.006 + (var.SLOT_SZ + var.SLOT_GAP) * (var.RW3)
+      val.rw_slot3.width = var.SLOT_SZ
+      val.rw_slot3.height = var.SLOT_SZ
+      val.rw_slot3.scale = var.ui
+      val.rw_num3.x = var.DETAIL_X + (var.SLOT_SZ + var.SLOT_GAP) * 3 + var.SLOT_SZ * 0.15
+      val.rw_num3.y = var.REWARD_TOP + var.SH * 0.006 + var.SLOT_SZ - var.SH * 0.0450 - var.SH * 0.006
+      val.rw_num3.width = var.SLOT_SZ * 0.85
+      val.rw_num3.height = var.SH * 0.0450
+      val.rw_num3.scale = var.ui
+      val.rw_slot4.x = var.DETAIL_X + (var.SLOT_SZ + var.SLOT_GAP) * (var.RC4)
+      val.rw_slot4.y = var.REWARD_TOP + var.SH * 0.006 + (var.SLOT_SZ + var.SLOT_GAP) * (var.RW4)
+      val.rw_slot4.width = var.SLOT_SZ
+      val.rw_slot4.height = var.SLOT_SZ
+      val.rw_slot4.scale = var.ui
+      val.rw_num4.x = var.DETAIL_X + (var.SLOT_SZ + var.SLOT_GAP) * 4 + var.SLOT_SZ * 0.15
+      val.rw_num4.y = var.REWARD_TOP + var.SH * 0.006 + var.SLOT_SZ - var.SH * 0.0450 - var.SH * 0.006
+      val.rw_num4.width = var.SLOT_SZ * 0.85
+      val.rw_num4.height = var.SH * 0.0450
+      val.rw_num4.scale = var.ui
+      val.rw_slot5.x = var.DETAIL_X + (var.SLOT_SZ + var.SLOT_GAP) * (var.RC5)
+      val.rw_slot5.y = var.REWARD_TOP + var.SH * 0.006 + (var.SLOT_SZ + var.SLOT_GAP) * (var.RW5)
+      val.rw_slot5.width = var.SLOT_SZ
+      val.rw_slot5.height = var.SLOT_SZ
+      val.rw_slot5.scale = var.ui
+      val.rw_num5.x = var.DETAIL_X + (var.SLOT_SZ + var.SLOT_GAP) * 5 + var.SLOT_SZ * 0.15
+      val.rw_num5.y = var.REWARD_TOP + var.SH * 0.006 + var.SLOT_SZ - var.SH * 0.0450 - var.SH * 0.006
+      val.rw_num5.width = var.SLOT_SZ * 0.85
+      val.rw_num5.height = var.SH * 0.0450
+      val.rw_num5.scale = var.ui
+      val.rw_slot6.x = var.DETAIL_X + (var.SLOT_SZ + var.SLOT_GAP) * (var.RC6)
+      val.rw_slot6.y = var.REWARD_TOP + var.SH * 0.006 + (var.SLOT_SZ + var.SLOT_GAP) * (var.RW6)
+      val.rw_slot6.width = var.SLOT_SZ
+      val.rw_slot6.height = var.SLOT_SZ
+      val.rw_slot6.scale = var.ui
+      val.rw_num6.x = var.DETAIL_X + (var.SLOT_SZ + var.SLOT_GAP) * 6 + var.SLOT_SZ * 0.15
+      val.rw_num6.y = var.REWARD_TOP + var.SH * 0.006 + var.SLOT_SZ - var.SH * 0.0450 - var.SH * 0.006
+      val.rw_num6.width = var.SLOT_SZ * 0.85
+      val.rw_num6.height = var.SH * 0.0450
+      val.rw_num6.scale = var.ui
+      val.rw_slot7.x = var.DETAIL_X + (var.SLOT_SZ + var.SLOT_GAP) * (var.RC7)
+      val.rw_slot7.y = var.REWARD_TOP + var.SH * 0.006 + (var.SLOT_SZ + var.SLOT_GAP) * (var.RW7)
+      val.rw_slot7.width = var.SLOT_SZ
+      val.rw_slot7.height = var.SLOT_SZ
+      val.rw_slot7.scale = var.ui
+      val.rw_num7.x = var.DETAIL_X + (var.SLOT_SZ + var.SLOT_GAP) * 7 + var.SLOT_SZ * 0.15
+      val.rw_num7.y = var.REWARD_TOP + var.SH * 0.006 + var.SLOT_SZ - var.SH * 0.0450 - var.SH * 0.006
+      val.rw_num7.width = var.SLOT_SZ * 0.85
+      val.rw_num7.height = var.SH * 0.0450
+      val.rw_num7.scale = var.ui
+      val.rw_slot8.x = var.DETAIL_X + (var.SLOT_SZ + var.SLOT_GAP) * (var.RC8)
+      val.rw_slot8.y = var.REWARD_TOP + var.SH * 0.006 + (var.SLOT_SZ + var.SLOT_GAP) * (var.RW8)
+      val.rw_slot8.width = var.SLOT_SZ
+      val.rw_slot8.height = var.SLOT_SZ
+      val.rw_slot8.scale = var.ui
+      val.rw_num8.x = var.DETAIL_X + (var.SLOT_SZ + var.SLOT_GAP) * 8 + var.SLOT_SZ * 0.15
+      val.rw_num8.y = var.REWARD_TOP + var.SH * 0.006 + var.SLOT_SZ - var.SH * 0.0450 - var.SH * 0.006
+      val.rw_num8.width = var.SLOT_SZ * 0.85
+      val.rw_num8.height = var.SH * 0.0450
+      val.rw_num8.scale = var.ui
+      val.page_name.scale = var.ui
+      val.btn_setting.scale = var.ui
+      val.btn_close.scale = var.ui
+      val.line_left.scale = var.ui
 
 controls:
 
@@ -300,7 +810,7 @@ controls:
       height: Screen.getWidth() * 0.0400
       fontSize: Screen.getHeight() * 0.0678
       shadow: true
-      lineSpace: Screen.getHeight() * 0.0805
+      lineSpace: Screen.getHeight() * 0.0680
       texts:
         - ~&f时序
 
@@ -616,22 +1126,198 @@ controls:
       height: Screen.getHeight() * 0.0042
       normal: ~96,208,200,110
 
-  quest_list:
-    val: "quest_list"
-    type: Text
+  q_row0:
+    val: "q_row0"
+    type: Texture
     attribute:
       point: ~top_left
-      x: Screen.getWidth() * 0.0140
-      y: Screen.getWidth() * 0.0900
-      width: Screen.getWidth() * 0.2760
-      height: Screen.getHeight() * 0.78
-      fontSize: Screen.getHeight() * 0.0593
-      shadow: true
-      lineSpace: Screen.getHeight() * 0.0805
+      visible: false
+      x: 0
+      y: Screen.getHeight() * 0
+      width: Screen.getWidth() * 0.2600
+      height: Screen.getHeight() * 0.0620
+      normal: ~0,0,0,0
+      hover: ~96,208,200,32
+      shape: ~round_rect
+      radius: 6
       texts:
-        - ~&7暂无任务
+        - ~&r
+      fontSize: Screen.getHeight() * 0.0520
+      shadow: true
+      alignment: ~left
+      indent: 10
+    action:
+      click: |-
+        Packet.send('starpact:row:0')
 
-  line_left:
+  q_row1:
+    val: "q_row1"
+    type: Texture
+    attribute:
+      point: ~top_left
+      visible: false
+      x: 0
+      y: Screen.getHeight() * 0.072
+      width: Screen.getWidth() * 0.2600
+      height: Screen.getHeight() * 0.0620
+      normal: ~0,0,0,0
+      hover: ~96,208,200,32
+      shape: ~round_rect
+      radius: 6
+      texts:
+        - ~&r
+      fontSize: Screen.getHeight() * 0.0520
+      shadow: true
+      alignment: ~left
+      indent: 10
+    action:
+      click: |-
+        Packet.send('starpact:row:1')
+
+  q_row2:
+    val: "q_row2"
+    type: Texture
+    attribute:
+      point: ~top_left
+      visible: false
+      x: 0
+      y: Screen.getHeight() * 0.144
+      width: Screen.getWidth() * 0.2600
+      height: Screen.getHeight() * 0.0620
+      normal: ~0,0,0,0
+      hover: ~96,208,200,32
+      shape: ~round_rect
+      radius: 6
+      texts:
+        - ~&r
+      fontSize: Screen.getHeight() * 0.0520
+      shadow: true
+      alignment: ~left
+      indent: 10
+    action:
+      click: |-
+        Packet.send('starpact:row:2')
+
+  q_row3:
+    val: "q_row3"
+    type: Texture
+    attribute:
+      point: ~top_left
+      visible: false
+      x: 0
+      y: Screen.getHeight() * 0.216
+      width: Screen.getWidth() * 0.2600
+      height: Screen.getHeight() * 0.0620
+      normal: ~0,0,0,0
+      hover: ~96,208,200,32
+      shape: ~round_rect
+      radius: 6
+      texts:
+        - ~&r
+      fontSize: Screen.getHeight() * 0.0520
+      shadow: true
+      alignment: ~left
+      indent: 10
+    action:
+      click: |-
+        Packet.send('starpact:row:3')
+
+  q_row4:
+    val: "q_row4"
+    type: Texture
+    attribute:
+      point: ~top_left
+      visible: false
+      x: 0
+      y: Screen.getHeight() * 0.288
+      width: Screen.getWidth() * 0.2600
+      height: Screen.getHeight() * 0.0620
+      normal: ~0,0,0,0
+      hover: ~96,208,200,32
+      shape: ~round_rect
+      radius: 6
+      texts:
+        - ~&r
+      fontSize: Screen.getHeight() * 0.0520
+      shadow: true
+      alignment: ~left
+      indent: 10
+    action:
+      click: |-
+        Packet.send('starpact:row:4')
+
+  q_row5:
+    val: "q_row5"
+    type: Texture
+    attribute:
+      point: ~top_left
+      visible: false
+      x: 0
+      y: Screen.getHeight() * 0.36
+      width: Screen.getWidth() * 0.2600
+      height: Screen.getHeight() * 0.0620
+      normal: ~0,0,0,0
+      hover: ~96,208,200,32
+      shape: ~round_rect
+      radius: 6
+      texts:
+        - ~&r
+      fontSize: Screen.getHeight() * 0.0520
+      shadow: true
+      alignment: ~left
+      indent: 10
+    action:
+      click: |-
+        Packet.send('starpact:row:5')
+
+  q_row6:
+    val: "q_row6"
+    type: Texture
+    attribute:
+      point: ~top_left
+      visible: false
+      x: 0
+      y: Screen.getHeight() * 0.432
+      width: Screen.getWidth() * 0.2600
+      height: Screen.getHeight() * 0.0620
+      normal: ~0,0,0,0
+      hover: ~96,208,200,32
+      shape: ~round_rect
+      radius: 6
+      texts:
+        - ~&r
+      fontSize: Screen.getHeight() * 0.0520
+      shadow: true
+      alignment: ~left
+      indent: 10
+    action:
+      click: |-
+        Packet.send('starpact:row:6')
+
+  q_row7:
+    val: "q_row7"
+    type: Texture
+    attribute:
+      point: ~top_left
+      visible: false
+      x: 0
+      y: Screen.getHeight() * 0.504
+      width: Screen.getWidth() * 0.2600
+      height: Screen.getHeight() * 0.0620
+      normal: ~0,0,0,0
+      hover: ~96,208,200,32
+      shape: ~round_rect
+      radius: 6
+      texts:
+        - ~&r
+      fontSize: Screen.getHeight() * 0.0520
+      shadow: true
+      alignment: ~left
+      indent: 10
+    action:
+      click: |-
+        Packet.send('starpact:row:7')
+
     val: "line_left"
     type: Texture
     attribute:
@@ -651,11 +1337,29 @@ controls:
       y: Screen.getWidth() * 0.0900
       width: Screen.getWidth() * 0.6650
       height: Screen.getHeight() * 0.62
-      fontSize: Screen.getHeight() * 0.0593
+      fontSize: Screen.getHeight() * 0.0700
       shadow: true
-      lineSpace: Screen.getHeight() * 0.0805
+      lineSpace: Screen.getHeight() * 0.0220
       texts:
         - ~&7选择一个任务查看详情
+    action:
+      wheel: |-
+        Packet.send('starpact:scroll:' + self.wheelValue)
+
+  detail_scroll:
+    val: "detail_scroll"
+    type: Texture
+    attribute:
+      point: ~top_left
+      x: Screen.getWidth() * 0.3160
+      y: Screen.getWidth() * 0.0900
+      width: Screen.getWidth() * 0.6650
+      height: Screen.getHeight() * 0.62
+      normal: ~0,0,0,0
+      through: false
+    action:
+      wheel: |-
+        Packet.send('starpact:scroll:' + self.wheelValue)
 
   row_content:
     val: "row_content"
@@ -1010,18 +1714,56 @@ controls:
         width: 1
         color: ~96,208,200,150
 
+  track_btn:
+    val: "track_btn"
+    type: Texture
+    attribute:
+      point: ~top_left
+      visible: false
+      x: 0
+      y: 0
+      width: Screen.getWidth() * 0.1300
+      height: Screen.getHeight() * 0.0620
+      normal: ~96,208,200,38
+      hover: ~96,208,200,72
+      shape: ~round_rect
+      radius: 6
+    effect:
+      stroke:
+        width: 2
+        color: ~96,208,200,190
+    action:
+      click: |-
+        Packet.send('starpact:track')
+  track_btn_label:
+    val: "track_btn_label"
+    type: Texture
+    attribute:
+      point: ~top_left
+      visible: false
+      x: 0
+      y: 0
+      width: Screen.getWidth() * 0.1300
+      height: Screen.getHeight() * 0.0620
+      normal: ~0,0,0,0
+      through: true
+      fontSize: Screen.getHeight() * 0.0380
+      center: true
+      texts:
+        - ~&b追踪任务
+
   reward_title:
     val: "reward_title"
     type: Text
     attribute:
-      point: ~bottom_left
+      point: ~top_left
       x: Screen.getWidth() * 0.3160
-      y: -Screen.getHeight() * 0.155
+      y: Screen.getHeight() * 0.7100
       width: Screen.getWidth() * 0.1500
       height: Screen.getHeight() * 0.0550
-      fontSize: Screen.getHeight() * 0.0593
+      fontSize: Screen.getHeight() * 0.0650
       shadow: true
-      lineSpace: Screen.getHeight() * 0.0805
+      lineSpace: 0
       texts:
         - ~&e奖励
 
@@ -1035,7 +1777,7 @@ controls:
       y: Screen.getWidth() * 0.1300
       width: Screen.getWidth() * 0.2700
       height: Screen.getWidth() * 0.0420
-      fontSize: Screen.getHeight() * 0.0593
+      fontSize: Screen.getHeight() * 0.0650
       texts:
         - ~&7面板缩放
 
@@ -1055,7 +1797,7 @@ controls:
       radius: 4
       texts:
         - ~&f-
-      fontSize: Screen.getHeight() * 0.0593
+      fontSize: Screen.getHeight() * 0.0650
       center: true
     action:
       click: |-
@@ -1081,7 +1823,7 @@ controls:
       radius: 4
       texts:
         - ~&f+
-      fontSize: Screen.getHeight() * 0.0593
+      fontSize: Screen.getHeight() * 0.0650
       center: true
     action:
       click: |-
@@ -1101,7 +1843,7 @@ controls:
       y: Screen.getWidth() * 0.1300
       width: Screen.getWidth() * 0.1500
       height: Screen.getWidth() * 0.0420
-      fontSize: Screen.getHeight() * 0.0593
+      fontSize: Screen.getHeight() * 0.0650
       texts:
         - '~ '
 
@@ -1109,14 +1851,303 @@ controls:
     val: "reward"
     type: Text
     attribute:
-      point: ~bottom_left
+      point: ~top_left
       x: Screen.getWidth() * 0.3160
-      y: -Screen.getHeight() * 0.095
+      y: Screen.getHeight() * 0.8300
       width: Screen.getWidth() * 0.6650
-      height: Screen.getHeight() * 0.0850
-      fontSize: Screen.getHeight() * 0.0593
+      height: Screen.getHeight() * 0.1700
+      fontSize: Screen.getHeight() * 0.0650
       shadow: true
-      lineSpace: Screen.getHeight() * 0.0805
+      lineSpace: 0
       texts:
         - ~&8完成任务后获得
+
+
+  rw_slot0:
+    val: "rw_slot0"
+    type: Slot
+    attribute:
+      point: ~top_left
+      visible: false
+      x: 0
+      y: 0
+      width: Screen.getHeight() * 0.1150
+      height: Screen.getHeight() * 0.1150
+      normal: ~starpact/gui/reward_slot.png
+      slotType: ~Container
+      id: 0
+      itemScale: "0.85"
+      lock: true
+
+  rw_num0:
+    val: "rw_num0"
+    type: Text
+    attribute:
+      point: ~top_left
+      visible: false
+      x: 0
+      y: 0
+      width: Screen.getHeight() * 0.1150
+      height: Screen.getHeight() * 0.0400
+      fontSize: Screen.getHeight() * 0.0330
+      shadow: true
+      alignment: ~right
+      texts:
+        - ~&r
+
+  rw_slot1:
+    val: "rw_slot1"
+    type: Slot
+    attribute:
+      point: ~top_left
+      visible: false
+      x: 0
+      y: 0
+      width: Screen.getHeight() * 0.1150
+      height: Screen.getHeight() * 0.1150
+      normal: ~starpact/gui/reward_slot.png
+      slotType: ~Container
+      id: 1
+      itemScale: "0.85"
+      lock: true
+
+  rw_num1:
+    val: "rw_num1"
+    type: Text
+    attribute:
+      point: ~top_left
+      visible: false
+      x: 0
+      y: 0
+      width: Screen.getHeight() * 0.1150
+      height: Screen.getHeight() * 0.0400
+      fontSize: Screen.getHeight() * 0.0330
+      shadow: true
+      alignment: ~right
+      texts:
+        - ~&r
+
+  rw_slot2:
+    val: "rw_slot2"
+    type: Slot
+    attribute:
+      point: ~top_left
+      visible: false
+      x: 0
+      y: 0
+      width: Screen.getHeight() * 0.1150
+      height: Screen.getHeight() * 0.1150
+      normal: ~starpact/gui/reward_slot.png
+      slotType: ~Container
+      id: 2
+      itemScale: "0.85"
+      lock: true
+
+  rw_num2:
+    val: "rw_num2"
+    type: Text
+    attribute:
+      point: ~top_left
+      visible: false
+      x: 0
+      y: 0
+      width: Screen.getHeight() * 0.1150
+      height: Screen.getHeight() * 0.0400
+      fontSize: Screen.getHeight() * 0.0330
+      shadow: true
+      alignment: ~right
+      texts:
+        - ~&r
+  rw_slot3:
+    val: "rw_slot3"
+    type: Slot
+    attribute:
+      point: ~top_left
+      visible: false
+      x: 0
+      y: 0
+      width: Screen.getHeight() * 0.1150
+      height: Screen.getHeight() * 0.1150
+      normal: ~starpact/gui/reward_slot.png
+      slotType: ~Container
+      id: 3
+      itemScale: "0.85"
+      lock: true
+
+  rw_num3:
+    val: "rw_num3"
+    type: Text
+    attribute:
+      point: ~top_left
+      visible: false
+      x: 0
+      y: 0
+      width: Screen.getHeight() * 0.1150
+      height: Screen.getHeight() * 0.0400
+      fontSize: Screen.getHeight() * 0.0330
+      shadow: true
+      alignment: ~right
+      texts:
+        - ~&r
+
+  rw_slot4:
+    val: "rw_slot4"
+    type: Slot
+    attribute:
+      point: ~top_left
+      visible: false
+      x: 0
+      y: 0
+      width: Screen.getHeight() * 0.1150
+      height: Screen.getHeight() * 0.1150
+      normal: ~starpact/gui/reward_slot.png
+      slotType: ~Container
+      id: 4
+      itemScale: "0.85"
+      lock: true
+
+  rw_num4:
+    val: "rw_num4"
+    type: Text
+    attribute:
+      point: ~top_left
+      visible: false
+      x: 0
+      y: 0
+      width: Screen.getHeight() * 0.1150
+      height: Screen.getHeight() * 0.0400
+      fontSize: Screen.getHeight() * 0.0330
+      shadow: true
+      alignment: ~right
+      texts:
+        - ~&r
+
+  rw_slot5:
+    val: "rw_slot5"
+    type: Slot
+    attribute:
+      point: ~top_left
+      visible: false
+      x: 0
+      y: 0
+      width: Screen.getHeight() * 0.1150
+      height: Screen.getHeight() * 0.1150
+      normal: ~starpact/gui/reward_slot.png
+      slotType: ~Container
+      id: 5
+      itemScale: "0.85"
+      lock: true
+
+  rw_num5:
+    val: "rw_num5"
+    type: Text
+    attribute:
+      point: ~top_left
+      visible: false
+      x: 0
+      y: 0
+      width: Screen.getHeight() * 0.1150
+      height: Screen.getHeight() * 0.0400
+      fontSize: Screen.getHeight() * 0.0330
+      shadow: true
+      alignment: ~right
+      texts:
+        - ~&r
+
+  rw_slot6:
+    val: "rw_slot6"
+    type: Slot
+    attribute:
+      point: ~top_left
+      visible: false
+      x: 0
+      y: 0
+      width: Screen.getHeight() * 0.1150
+      height: Screen.getHeight() * 0.1150
+      normal: ~starpact/gui/reward_slot.png
+      slotType: ~Container
+      id: 6
+      itemScale: "0.85"
+      lock: true
+
+  rw_num6:
+    val: "rw_num6"
+    type: Text
+    attribute:
+      point: ~top_left
+      visible: false
+      x: 0
+      y: 0
+      width: Screen.getHeight() * 0.1150
+      height: Screen.getHeight() * 0.0400
+      fontSize: Screen.getHeight() * 0.0330
+      shadow: true
+      alignment: ~right
+      texts:
+        - ~&r
+
+  rw_slot7:
+    val: "rw_slot7"
+    type: Slot
+    attribute:
+      point: ~top_left
+      visible: false
+      x: 0
+      y: 0
+      width: Screen.getHeight() * 0.1150
+      height: Screen.getHeight() * 0.1150
+      normal: ~starpact/gui/reward_slot.png
+      slotType: ~Container
+      id: 7
+      itemScale: "0.85"
+      lock: true
+
+  rw_num7:
+    val: "rw_num7"
+    type: Text
+    attribute:
+      point: ~top_left
+      visible: false
+      x: 0
+      y: 0
+      width: Screen.getHeight() * 0.1150
+      height: Screen.getHeight() * 0.0400
+      fontSize: Screen.getHeight() * 0.0330
+      shadow: true
+      alignment: ~right
+      texts:
+        - ~&r
+
+  rw_slot8:
+    val: "rw_slot8"
+    type: Slot
+    attribute:
+      point: ~top_left
+      visible: false
+      x: 0
+      y: 0
+      width: Screen.getHeight() * 0.1150
+      height: Screen.getHeight() * 0.1150
+      normal: ~starpact/gui/reward_slot.png
+      slotType: ~Container
+      id: 8
+      itemScale: "0.85"
+      lock: true
+
+  rw_num8:
+    val: "rw_num8"
+    type: Text
+    attribute:
+      point: ~top_left
+      visible: false
+      x: 0
+      y: 0
+      width: Screen.getHeight() * 0.1150
+      height: Screen.getHeight() * 0.0400
+      fontSize: Screen.getHeight() * 0.0330
+      shadow: true
+      alignment: ~right
+      texts:
+        - ~&r
+
 

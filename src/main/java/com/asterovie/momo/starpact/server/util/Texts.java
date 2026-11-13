@@ -21,15 +21,40 @@ public final class Texts {
         return out;
     }
 
-    /** 按「视觉宽度」算长度：中文算 2，其余算 1。用于截断标题。 */
+    /** 按「视觉宽度」算长度：中文算 2，几何符号算 1，其余算 1。用于截断标题。 */
     public static int visualWidth(String s) {
         String plain = strip(s);
         int w = 0;
         for (int i = 0; i < plain.length(); i++) {
-            char c = plain.charAt(i);
-            w += (c > 0xFF) ? 2 : 1;
+            w += charWidth(plain.charAt(i));
         }
         return w;
+    }
+
+    /**
+     * 单个字符占几格。
+     *
+     * <p>不能简单用 {@code c > 0xFF ? 2 : 1}：进度条用的 ▰/▱(U+25B0/25B1)、
+     * 项目符号 ◈(U+25C8)、✔(U+2714) 都大于 0xFF，但在原版字体里是**半角**。
+     * 按 2 格算会让宽度估算偏大，导致右对齐的数字位置漂移。
+     */
+    private static int charWidth(char c) {
+        // 明确是全角的区块
+        if ((c >= 0x4E00 && c <= 0x9FFF)      // CJK 统一汉字
+                || (c >= 0x3000 && c <= 0x303F)   // CJK 标点
+                || (c >= 0xFF00 && c <= 0xFF60)   // 全角 ASCII
+                || (c >= 0xFFE0 && c <= 0xFFE6)) {
+            return 2;
+        }
+        // 几何图形 / 制表符 / 箭头等：原版字体里是半角
+        if ((c >= 0x2190 && c <= 0x21FF)      // 箭头
+                || (c >= 0x2500 && c <= 0x257F)   // 制表符
+                || (c >= 0x25A0 && c <= 0x25FF)   // 几何图形 ■ □ ▰ ▱ ◈
+                || (c >= 0x2600 && c <= 0x27BF)   // 杂项符号 ✔ ✕
+                || (c >= 0x2B00 && c <= 0x2BFF)) { // 杂项符号和箭头
+            return 1;
+        }
+        return (c > 0xFF) ? 2 : 1;
     }
 
     /** 超过 maxVisual 宽度就截断并加省略号。 */

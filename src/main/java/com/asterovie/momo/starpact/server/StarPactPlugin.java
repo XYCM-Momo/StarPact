@@ -10,6 +10,8 @@ import com.asterovie.momo.starpact.server.hud.HudService;
 import com.asterovie.momo.starpact.server.hud.PanelListenerRegistrar;
 import com.asterovie.momo.starpact.server.hud.PanelRenderer;
 import com.asterovie.momo.starpact.server.hud.PanelService;
+import com.asterovie.momo.starpact.server.quest.ItemResolver;
+import com.asterovie.momo.starpact.server.quest.QuestConfigLoader;
 import com.asterovie.momo.starpact.server.storage.PlayerPrefs;
 import com.asterovie.momo.starpact.server.util.LanguageManager;
 import org.bukkit.Bukkit;
@@ -44,6 +46,8 @@ public final class StarPactPlugin extends JavaPlugin {
     private ChemdahHook chemdah;
     private HudService hud;
     private PanelService panel;
+    private QuestConfigLoader quests;
+    private ItemResolver items;
 
     private BukkitTask refreshTask;
     private BukkitTask saveTask;
@@ -56,6 +60,10 @@ public final class StarPactPlugin extends JavaPlugin {
         config = new SpConfig(this);
         lang = new LanguageManager(this);
         prefs = new PlayerPrefs(this);
+
+        items = new ItemResolver(this);
+        quests = new QuestConfigLoader(this);
+        quests.reload();
 
         chemdah = new ChemdahHook();
         ax = new AxHook(this);
@@ -184,8 +192,15 @@ public final class StarPactPlugin extends JavaPlugin {
 
     private void registerListeners() {
         Bukkit.getPluginManager().registerEvents(new PlayerListener(this), this);
+        // 奖励容器只读拦截（纯 Bukkit，无条件注册）
+        Bukkit.getPluginManager().registerEvents(
+                new com.asterovie.momo.starpact.server.hud.RewardContainerListener(this), this);
         // 面板交互监听依赖 ArcartX 的事件类，必须隔离注册
         PanelListenerRegistrar.register(this);
+        // 任务奖励发放依赖 Chemdah 的事件类，同样隔离注册
+        com.asterovie.momo.starpact.server.quest.QuestRewardRegistrar.register(this);
+        // 任务接取事件：接了就立刻刷 HUD，不用等 2 秒轮询
+        com.asterovie.momo.starpact.server.quest.QuestAcceptRegistrar.register(this);
     }
 
     private void startTasks() {
@@ -213,6 +228,10 @@ public final class StarPactPlugin extends JavaPlugin {
     public void reloadAll() {
         config.reload();
         lang.reload();
+        // 任务展示配置（描述 / 奖励）一起重载
+        if (quests != null) {
+            quests.reload();
+        }
 
         // 重新注册两个 UI（可能改了 ui/*.yml）
         if (ax.available()) {
@@ -221,6 +240,10 @@ public final class StarPactPlugin extends JavaPlugin {
         ax.unregisterUi(PanelRenderer.HUD_SETTINGS_UI_ID);
             registerUi();
             // 按键走 AX 配置文件（simple_key），不在这里注册
+
+            // UI 重新注册后客户端的旧 UI 已失效，清掉「已打开」记录，
+            // 下次 refresh 会重新 open —— 否则 reload 后 HUD 会消失。
+            hud.resetOpened();
         }
         // 重建刷新任务（间隔可能变了）
         if (refreshTask != null) {
@@ -262,6 +285,16 @@ public final class StarPactPlugin extends JavaPlugin {
 
     public PanelService panel() {
         return panel;
+    }
+
+    /** quests/ 目录的任务展示配置。 */
+    public QuestConfigLoader quests() {
+        return quests;
+    }
+
+    /** MythicMobs / NeigeItems 物品名解析。 */
+    public ItemResolver items() {
+        return items;
     }
 
     /** 供内部/调试用：当前可显示的追踪条目。 */

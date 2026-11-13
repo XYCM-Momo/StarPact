@@ -76,8 +76,8 @@ display:
   # 进度条显示的字符。保持 ASCII 以免玩家客户端字体缺失。
   # 进度条长度（字符数）—— 面板宽 200 时 16 个字符约 96px，比较合适
   bar-length: 16
-  bar-fill: '|'
-  bar-empty: '.'
+  bar-fill: '■'
+  bar-empty: '□'
 
   # 是否在条目右侧显示 "3/10"
   show-numbers: true
