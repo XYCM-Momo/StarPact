@@ -8,6 +8,36 @@
 
 ---
 
+## [1.3.0] — 2026-11-17
+
+**Chemdah 对话改用 StarPact 自己的 AX 界面展示，箱子彻底不可见。**
+
+### 新增
+
+* **对话系统**（`ui/chat-panel.yml`）：仿原神风格，底部台词条 + 右侧圆形选项按钮。
+  * 数据直接从 Chemdah 的 `Session` 读取（`getTitle` / `getNpcSide` / `getPlayerReplyForDisplay`），
+    不再依赖箱子里的物品。
+  * 玩家点选项 → 解析 `goto xxx` → 调 `Session.goto()` 跳转，再回填新节点的台词与选项。
+  * 对话时自动隐藏原版 HUD（物品栏 / 聊天栏 / 血条 / 准星 / 计分板）。
+  * 点击选项有音效反馈。
+* **任务失败 / 取消时执行指令**（`fail-commands`）：
+  * 同时监听 `QuestEvents$Fail$Post`（自然失败）和 `QuestEvents$Unregistered`（`/chq stop` 取消）。
+  * 未单独配置时自动回落用 `untrack-commands`。
+* **启动自动补载 Chemdah 对话**：修复「进服必须手动 `/ch reload` 才能与 NPC 对话」。
+  只在没有玩家在线时执行，不会打断任何人的对话。
+
+### 变更
+
+* `theme-chest.ui.title` 改为固定值 `StarPactChat`，供 `ui.match` 精确匹配后遮盖箱子。
+
+### 修复
+
+* **任务监听器收到全部事件**：Chemdah 的 `registerEvent` 会把几乎所有事件投递给同一个监听器，
+  之前「接任务」会被误当成「任务失败」执行停导航。现已按类名严格过滤。
+* **选项 hover 只有部分行生效**：文字层与按钮层尺寸不一致，中间形成一条死区。
+
+---
+
 ## [1.2.0] — 2026-11-13
 
 **HUD 重新设计：只显示一个追踪任务，渲染成「文字 + 一根细线」。**

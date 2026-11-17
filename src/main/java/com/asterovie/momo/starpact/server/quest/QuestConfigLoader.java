@@ -189,8 +189,85 @@ public final class QuestConfigLoader {
             }
         }
 
-        QuestConfig q = new QuestConfig(id, name, category, desc, rewards);
+        QuestConfig q = new QuestConfig(id, name, category, desc, rewards,
+                parseCommandList(sec, "track-commands", "trackCommands",
+                        "track-command", "trackCommand"),
+                parseCommandList(sec, "untrack-commands", "untrackCommands",
+                        "untrack-command", "untrackCommand"),
+                parseCommandList(sec, "complete-commands", "completeCommands",
+                        "complete-command", "completeCommand",
+                        "on-complete", "onComplete"),
+                parseCommandList(sec, "fail-commands", "failCommands",
+                        "fail-command", "failCommand",
+                        "on-fail", "onFail"),
+                parseNavPos(sec));
         return q.isEmpty() ? null : q;
+    }
+
+    /**
+     * 解析一组指令（点追踪 / 取消追踪共用）。
+     *
+     * <p>键名支持连字符和小驼峰两种写法，列表或单条都可以。
+     * 会自动去掉前导 {@code /}。
+     */
+    private List<String> parseCommandList(ConfigurationSection sec, String... keys) {
+        List<String> out = new ArrayList<>();
+        List<String> list = new ArrayList<>();
+        for (String key : keys) {
+            list = sec.getStringList(key);
+            if (!list.isEmpty()) {
+                break;
+            }
+        }
+        if (list.isEmpty() && keys.length > 0) {
+            // 允许写成单条字符串
+            for (String key : keys) {
+                String one = sec.getString(key);
+                if (one != null && !one.isBlank()) {
+                    list = List.of(one);
+                    break;
+                }
+            }
+        }
+        for (String s : list) {
+            if (s == null || s.isBlank()) {
+                continue;
+            }
+            String cmd = s.trim();
+            if (cmd.startsWith("/")) {
+                cmd = cmd.substring(1);
+            }
+            out.add(cmd);
+        }
+        return out;
+    }
+
+    /**
+     * 解析导航坐标 {@code nav-pos: [x, y, z]}（也接受 {@code [x, z]}）。
+     */
+    private List<Double> parseNavPos(ConfigurationSection sec) {
+        List<Double> nums = new ArrayList<>();
+        for (String key : new String[]{"nav-pos", "navPos", "nav"}) {
+            List<?> raw = sec.getList(key);
+            if (raw == null || raw.isEmpty()) {
+                continue;
+            }
+            for (Object o : raw) {
+                if (o instanceof Number n) {
+                    nums.add(n.doubleValue());
+                } else if (o != null) {
+                    try {
+                        nums.add(Double.parseDouble(String.valueOf(o).trim()));
+                    } catch (NumberFormatException ignored) {
+                        // 非数字就跳过这个键
+                    }
+                }
+            }
+            if (!nums.isEmpty()) {
+                break;
+            }
+        }
+        return nums;
     }
 
     private QuestConfig.Reward parseReward(Map<?, ?> m) {

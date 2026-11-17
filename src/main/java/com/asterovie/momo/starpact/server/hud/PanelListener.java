@@ -57,6 +57,20 @@ public final class PanelListener implements Listener {
             // ⚠️ 这里**不推数据**。open 触发器在每次重绘时都会触发，
             // 一旦在这里 push 就会 ready → push → 重绘 → ready 死循环
             // （HUD 踩过，表现为界面狂闪）。数据由 openPanel() 推。
+            // 对话面板就绪 / 玩家点了某个回复
+            case "chat_ready" -> {
+                if (plugin.spConfig().debug()) {
+                    plugin.getLogger().info("[对话] AX 面板就绪 " + player.getName());
+                }
+                plugin.chatBridge().pushAgain(player);
+            }
+            case "chat_pick" -> {
+                int slot = arg == null ? -1 : Integer.parseInt(arg.trim());
+                if (plugin.spConfig().debug()) {
+                    plugin.getLogger().info("[对话] 玩家点击选项 slot=" + slot);
+                }
+                plugin.chatBridge().onPick(player, slot);
+            }
             case "ready" -> {
                 // 只做节流记录，不推数据
                 plugin.panel().allowReady(player.getUniqueId());

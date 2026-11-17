@@ -46,6 +46,7 @@ public final class StarPactPlugin extends JavaPlugin {
     private ChemdahHook chemdah;
     private HudService hud;
     private PanelService panel;
+    private com.asterovie.momo.starpact.server.chat.ChatBridge chatBridge;
     private QuestConfigLoader quests;
     private ItemResolver items;
 
@@ -69,6 +70,8 @@ public final class StarPactPlugin extends JavaPlugin {
         ax = new AxHook(this);
         hud = new HudService(this);
         panel = new PanelService(this);
+        chatBridge = new com.asterovie.momo.starpact.server.chat.ChatBridge(this);
+        chatBridge.start();
 
         if (!chemdah.available()) {
             getLogger().warning("未检测到 Chemdah —— 任务追踪将显示为空。");
@@ -82,10 +85,37 @@ public final class StarPactPlugin extends JavaPlugin {
         registerListeners();
         startTasks();
         installAxKeyConfig();
+        scheduleChemdahConversationReload();
 
         getLogger().info("StarPact Plugin 已成功启用！");
         getLogger().info("  Chemdah: " + (chemdah.available() ? "已接入" : "未接入")
                 + " / ArcartX: " + (ax.available() ? "已接入" : "未接入（降级 BossBar）"));
+    }
+
+    /**
+     * 启动后补一次 Chemdah 的对话重载。
+     *
+     * <p><b>为什么需要</b>：Chemdah 的对话（conversation）是延后加载的 ——
+     * 服务端刚启动时 {@code ConversationManager} 里还是空的，此时玩家进服
+     * 右键 NPC 完全没反应，必须手动 {@code /ch reload} 一次才正常。
+     * 这是 Chemdah 自身的加载时序问题，不是 StarPact 的。
+     *
+     * <p><b>为什么安全</b>：只在「没有玩家在线」时才执行，
+     * 不会打断任何正在进行中的对话或任务。
+     */
+    private void scheduleChemdahConversationReload() {
+        if (!chemdah.available()) {
+            return;
+        }
+        // 等 10 秒：给 Chemdah 自己留出首次加载的时间，避免和它抢
+        Bukkit.getScheduler().runTaskLater(this, () -> {
+            if (!Bukkit.getOnlinePlayers().isEmpty()) {
+                getLogger().info("启动补载跳过：已有玩家在线，交给 Chemdah 自己处理");
+                return;
+            }
+            getLogger().info("启动补载：重新加载 Chemdah 对话（修复「进服要 ch reload 才能对话」）");
+            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "chemdah reload");
+        }, 200L);
     }
 
     @Override
@@ -126,6 +156,9 @@ public final class StarPactPlugin extends JavaPlugin {
         registerOneUi(HudRenderer.UI_ID, "ui/quest-tracker.yml");
         registerOneUi(PanelRenderer.UI_ID, "ui/quest-panel.yml");
         registerOneUi(PanelRenderer.HUD_SETTINGS_UI_ID, "ui/hud-settings.yml");
+        // 对话面板：盖住 Chemdah 的箱子对话
+        registerOneUi(com.asterovie.momo.starpact.server.chat.ChatBridge.UI_ID,
+                "ui/chat-panel.yml");
     }
 
     /**
@@ -192,6 +225,8 @@ public final class StarPactPlugin extends JavaPlugin {
 
     private void registerListeners() {
         Bukkit.getPluginManager().registerEvents(new PlayerListener(this), this);
+        // 对话桥：把 Chemdah 的箱子对话翻译给 AX 面板
+        Bukkit.getPluginManager().registerEvents(chatBridge, this);
         // 奖励容器只读拦截（纯 Bukkit，无条件注册）
         Bukkit.getPluginManager().registerEvents(
                 new com.asterovie.momo.starpact.server.hud.RewardContainerListener(this), this);
@@ -201,6 +236,8 @@ public final class StarPactPlugin extends JavaPlugin {
         com.asterovie.momo.starpact.server.quest.QuestRewardRegistrar.register(this);
         // 任务接取事件：接了就立刻刷 HUD，不用等 2 秒轮询
         com.asterovie.momo.starpact.server.quest.QuestAcceptRegistrar.register(this);
+        // 任务失败事件：执行 fail-commands（停导航等）
+        com.asterovie.momo.starpact.server.quest.QuestFailRegistrar.register(this);
     }
 
     private void startTasks() {
@@ -285,6 +322,10 @@ public final class StarPactPlugin extends JavaPlugin {
 
     public PanelService panel() {
         return panel;
+    }
+
+    public com.asterovie.momo.starpact.server.chat.ChatBridge chatBridge() {
+        return chatBridge;
     }
 
     /** quests/ 目录的任务展示配置。 */

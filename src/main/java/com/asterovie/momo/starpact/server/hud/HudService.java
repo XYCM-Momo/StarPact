@@ -107,13 +107,16 @@ public final class HudService {
                 Long prev = before.get(e.questId());
                 // 没见过的 ID，或同一 ID 的接取时间变了 => 新接取
                 if (prev == null || !prev.equals(e.startTime())) {
+                    // 不 break：一次接了多个任务时取「最后一个」。
+                    // all 已按接取时间升序排列，最后一个就是最新接下的。
                     freshId = e.questId();
-                    break;
                 }
             }
             if (freshId != null) {
                 trackedId = freshId;
                 plugin.prefs().setTracked(uid, trackedId);
+                // 与手动点「追踪」行为一致：触发这个任务的追踪指令（导航等）
+                plugin.panel().runTrackCommands(player, freshId);
             }
         }
         lastKnownQuests.put(uid, nowStart);

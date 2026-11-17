@@ -424,17 +424,188 @@ public final class PanelService {
         }
         String tracked = plugin.prefs().of(player.getUniqueId()).trackedId;
         boolean starting = !cur.equals(tracked);
+        String previous = tracked;
         plugin.prefs().setTracked(player.getUniqueId(), starting ? cur : null);
         clickSound(player);
         // 立刻刷新 HUD（切追踪目标 / 取消追踪）
         plugin.hud().refresh(player, true);
         if (starting) {
+            // 从 A 切到 B：先执行 A 的「取消追踪」指令，再执行 B 的「追踪」指令。
+            // 否则导航会叠在一起，两条路线同时画在屏幕上。
+            if (previous != null && !previous.isBlank() && !previous.equals(cur)) {
+                runUntrackCommands(player, previous);
+            }
             // 开始追踪：关掉面板，直接回到游戏看 HUD
             closePanel(player);
+            // 执行 quests/ 里配的追踪指令（导航等），放在关面板之后，
+            // 这样玩家先看到游戏画面，指令的效果（比如地图上出现路径）更直观。
+            runTrackCommands(player, cur);
         } else {
             // 取消追踪：面板保持打开，方便改选别的任务
+            runUntrackCommands(player, cur);
             push(player);
         }
+    }
+
+    /**
+     * 执行 quests/*.yml 里给这个任务配的追踪指令。
+     *
+     * <p>以玩家本人身份执行一次，不做「失败再走控制台」的重试 ——
+     * 那会把指令执行两遍（详见 {@link #runCommands} 里的说明）。
+     */
+    public void runTrackCommands(Player player, String questId) {
+        if (!allowCmd(player, "track", questId)) {
+            return;
+        }
+        var cfg = cfgOf(questId);
+        if (cfg == null) {
+            return;
+        }
+        runCommands(player, cfg.trackCommands(), cfg.navPos(), "追踪指令");
+    }
+
+    /**
+     * 执行 quests/*.yml 里给这个任务配的「取消追踪」指令。
+     *
+     * <p>典型用途是 {@code startrail nav stop {player}} —— 停止导航。
+     */
+    public void runUntrackCommands(Player player, String questId) {
+        if (!allowCmd(player, "untrack", questId)) {
+            return;
+        }
+        var cfg = cfgOf(questId);
+        if (cfg == null) {
+            return;
+        }
+        runCommands(player, cfg.untrackCommands(), cfg.navPos(), "取消追踪指令");
+    }
+
+    /**
+     * 同一玩家同一类事件的去重窗口（毫秒）。
+     *
+     * <p>Chemdah 的完成事件可能因为「任务自己完成 + 玩家手动提交」等原因
+     * 在极短时间内触发多次；不去重的话玩家会看到一屏重复的指令回执。
+     */
+    private static final long CMD_DEDUP_MS = 600L;
+
+    /** key = 玩家UUID + 事件类型 + 任务ID */
+    private final java.util.Map<String, Long> lastCmdAt = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /**
+     * 去重检查：短时间内重复调用返回 false。
+     */
+    private boolean allowCmd(Player player, String kind, String questId) {
+        String key = player.getUniqueId() + "|" + kind + "|" + questId;
+        long now = System.currentTimeMillis();
+        Long prev = lastCmdAt.get(key);
+        if (prev != null && now - prev < CMD_DEDUP_MS) {
+            return false;
+        }
+        lastCmdAt.put(key, now);
+        // 顺手清掉过期条目，避免 Map 无限增长
+        if (lastCmdAt.size() > 512) {
+            lastCmdAt.entrySet().removeIf(e -> now - e.getValue() > 10_000L);
+        }
+        return true;
+    }
+
+    /**
+     * 任务完成时执行的指令。典型用途：停止导航。
+     */
+    public void runCompleteCommands(Player player, String questId) {
+        if (!allowCmd(player, "complete", questId)) {
+            return;
+        }
+        var cfg = cfgOf(questId);
+        if (cfg == null) {
+            return;
+        }
+        runCommands(player, cfg.completeCommands(), cfg.navPos(), "完成指令");
+        // 完成后任务从追踪列表消失，导航也该停 —— 如果没单独配完成指令，
+        // 用取消追踪的兜底一次，避免导航残留。
+        if (cfg.completeCommands() == null || cfg.completeCommands().isEmpty()) {
+            runCommands(player, cfg.untrackCommands(), cfg.navPos(), "完成指令(兜底)");
+        }
+    }
+
+    /**
+     * 任务失败（含超时 / 放弃）时执行的指令。典型用途：停止导航。
+     */
+    public void runFailCommands(Player player, String questId) {
+        if (!allowCmd(player, "fail", questId)) {
+            return;
+        }
+        var cfg = cfgOf(questId);
+        if (cfg == null) {
+            return;
+        }
+        runCommands(player, cfg.failCommands(), cfg.navPos(), "失败指令");
+        // 同理：没单独配失败指令时，用取消追踪的兜底
+        if (cfg.failCommands() == null || cfg.failCommands().isEmpty()) {
+            runCommands(player, cfg.untrackCommands(), cfg.navPos(), "失败指令(兜底)");
+        }
+    }
+
+    private com.asterovie.momo.starpact.server.quest.QuestConfig cfgOf(String questId) {
+        var loader = plugin.quests();
+        if (loader == null || questId == null || questId.isBlank()) {
+            return null;
+        }
+        return loader.get(questId);
+    }
+
+    /**
+     * 逐条执行指令，替换占位符。
+     *
+     * <p>支持的占位符：{@code {player}}、{@code {x}}、{@code {y}}、{@code {z}}
+     * （坐标来自任务的 {@code nav-pos}，没配就是 0）。
+     */
+    private void runCommands(Player player, java.util.List<String> commands,
+                             java.util.List<Double> navPos, String tag) {
+        if (commands == null || commands.isEmpty()) {
+            return;
+        }
+        double x = 0, y = 0, z = 0;
+        if (navPos != null) {
+            if (navPos.size() >= 3) {
+                x = navPos.get(0);
+                y = navPos.get(1);
+                z = navPos.get(2);
+            } else if (navPos.size() == 2) {
+                // 只给了 x/z：Y 用玩家当前高度
+                x = navPos.get(0);
+                y = player.getLocation().getY();
+                z = navPos.get(1);
+            }
+        }
+        plugin.getLogger().info("[" + tag + "] 开始执行 " + commands.size() + " 条指令: " + commands);
+        for (String raw : commands) {
+            String cmd = raw
+                    .replace("{player}", player.getName())
+                    .replace("{x}", fmtCoord(x))
+                    .replace("{y}", fmtCoord(y))
+                    .replace("{z}", fmtCoord(z));
+            if (cmd.startsWith("/")) {
+                cmd = cmd.substring(1);
+            }
+            try {
+                // ⚠️ 只以玩家身份执行一次，不做「失败再用控制台重试」。
+                // dispatchCommand 返回 false 有两种情况：玩家没权限、或指令自己执行失败。
+                // 后者重试会让指令被执行两遍 —— StarTrail 的 nav stop 在没有导航时
+                // 就返回 false，于是玩家会看到两条「已被停止导航」的回执。
+                org.bukkit.Bukkit.dispatchCommand(player, cmd);
+            } catch (Throwable t) {
+                plugin.getLogger().warning("[" + tag + "] 执行失败: " + cmd + " -> " + t);
+            }
+        }
+    }
+
+    /** 坐标格式化：整数不带小数点，小数保留一位。 */
+    private static String fmtCoord(double v) {
+        if (Math.abs(v - Math.rint(v)) < 1e-6) {
+            return String.valueOf((long) Math.rint(v));
+        }
+        return String.format(java.util.Locale.ROOT, "%.1f", v);
     }
 
     /** 滚轮节流间隔（毫秒）。 */

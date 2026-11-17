@@ -64,6 +64,12 @@ public final class QuestRewardListener implements Listener {
     }
 
     private void handleComplete(Event event) {
+        // 同 QuestFailListener：必须先校验事件类型，
+        // registerEvent 不会帮我们过滤，实测会收到大量不相关事件。
+        if (!"ink.ptms.chemdah.api.event.collect.QuestEvents$Complete$Post"
+                .equals(event.getClass().getName())) {
+            return;
+        }
         try {
             Object profile = event.getClass().getMethod("getPlayerProfile").invoke(event);
             if (profile == null) {
@@ -90,6 +96,10 @@ public final class QuestRewardListener implements Listener {
             } catch (Throwable ignored) {
                 // 音效失败不影响发奖
             }
+
+            // 完成指令（比如停掉导航）：必须在「有没有奖励」判断之前执行，
+            // 否则没配奖励的任务就跳过这一段了。
+            plugin.panel().runCompleteCommands(player, questId);
 
             var loader = plugin.quests();
             var items = plugin.items();

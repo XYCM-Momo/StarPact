@@ -20,7 +20,48 @@ public record QuestConfig(
         /** 描述（多行，可为空 = 用 Chemdah 的 addon.ui.description） */
         List<String> description,
         /** 奖励列表 */
-        List<Reward> rewards) {
+        List<Reward> rewards,
+        /**
+         * 玩家在任务面板里点「追踪」时执行的指令（可多条）。
+         *
+         * <p>典型用途：接上 StarTrail 的导航，比如
+         * {@code startrail nav {player} <x> <z> <名称>}。
+         *
+         * <p>支持占位符 {@code {player}}、{@code {x}}、{@code {y}}、{@code {z}}
+         * （坐标来自 {@link #navPos()}，没配就替换成 0）。
+         *
+         * <p>以<b>玩家本人身份</b>执行；玩家权限不足时自动改用控制台重试。
+         */
+        List<String> trackCommands,
+        /**
+         * 玩家点「取消追踪」时执行的指令（可多条）。
+         *
+         * <p>典型用途：停掉导航 —— {@code startrail nav stop {player}}。
+         *
+         * <p>触发时机：手动取消追踪、或者切去追踪另一个任务时（旧任务取消）。
+         */
+        List<String> untrackCommands,
+        /**
+         * 任务<b>完成</b>时执行的指令（可多条）。
+         *
+         * <p>典型用途：停掉导航 —— {@code startrail nav stop {player}}。
+         *
+         * <p>占位符与 {@link #trackCommands()} 相同。
+         */
+        List<String> completeCommands,
+        /**
+         * 任务<b>失败</b>（含超时/放弃）时执行的指令（可多条）。
+         *
+         * <p>典型用途：停掉导航。
+         */
+        List<String> failCommands,
+        /**
+         * 导航目标坐标 {@code [x, y, z]}，用于「点追踪后视角转向目标」。
+         *
+         * <p>也可以不配 —— 那样只执行 {@link #trackCommands()}，不转视角。
+         * 只配两个值时按 {@code [x, z]} 处理（Y 由服务端取玩家当前高度）。
+         */
+        List<Double> navPos) {
 
     /**
      * 单条奖励。
@@ -60,6 +101,11 @@ public record QuestConfig(
     public boolean isEmpty() {
         return name == null && category == null
                 && (description == null || description.isEmpty())
-                && (rewards == null || rewards.isEmpty());
+                && (rewards == null || rewards.isEmpty())
+                && (trackCommands == null || trackCommands.isEmpty())
+                && (untrackCommands == null || untrackCommands.isEmpty())
+                && (completeCommands == null || completeCommands.isEmpty())
+                && (failCommands == null || failCommands.isEmpty())
+                && (navPos == null || navPos.isEmpty());
     }
 }
