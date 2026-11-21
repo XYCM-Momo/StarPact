@@ -27,7 +27,7 @@ StarPact 把 **Chemdah 的箱子对话**替换成自己的 AX 界面：玩家永
 ```
 Chemdah 对话开始（箱子被打开）
         │
-        │  轮询（每 10 tick）
+        │  轮询（每 2 tick / 100ms）
         ▼
 ChemdahChat.snapshot()            读 Session：
         │                         · getTitle()                  NPC 名
@@ -120,23 +120,75 @@ ui:
 | 控件 | 作用 |
 |---|---|
 | `shade` | 底部渐变遮罩（上透明 → 下深色） |
-| `name` / `line` / `text` | NPC 名、金色短线、台词 |
-| `opt_bg0..5` | 选项按钮背景（圆角胶囊 + hover + 点击） |
-| `opt_tx0..5` | 选项文字（**尺寸与按钮完全一致**） |
+| `name` / `line` | NPC 名、金色短线 |
+| `text1..4` | 台词，**每行一个控件** |
+| `opt_bg0..5` | 选项按钮（圆角胶囊 + hover + 文字 + 点击，**单层**） |
 
-### 选项两层的对齐（踩过的坑）
+### 选项必须是单层控件
 
-`opt_tx` 必须和 `opt_bg` **尺寸、位置完全一致**：
+早期是 `opt_tx`（文字）+ `opt_bg`（背景）两层叠加，踩了两个坑：
 
-```aria
-val.opt_tx0.width  = var.OW
-val.opt_tx0.height = var.OH        # 不是 var.FS！
-val.opt_tx0.x      = var.OX
-val.opt_tx0.y      = var.BASE      # 不要再加 (OH - FS) * 0.5
+1. **一次点击发两个包**：两层都绑了 `chat_pick`，点一下对话跳两步。
+2. **hover 时有时无**：`through: true` 不能可靠地把 hover 传给下层，
+   鼠标移到文字上时按钮的高亮就消失。
+
+**正解：`Texture` 控件本身支持 `texts`**，所以文字直接画在按钮上，只留一层：
+
+```yaml
+opt_bg0:
+  type: Texture
+  normal: ~26,30,40,190
+  hover: ~40,60,72,225
+  shape: ~round_rect
+  radius: 13
+  center: true
+  fontSize: 16
+  texts:
+    - ~&f            # 由 packet['t0'] 填充
+  action:
+    click: Packet.send('starpact:chat_pick:0')
 ```
 
-早期文字层比按钮矮（字号高度 16~18 vs 按钮 26），
-**中间形成一条死区**：鼠标在边缘能 hover，移到文字上就没反应。
+### 多行台词要逐行下发
+
+Chemdah 的 `npc:` 是**列表**，每项应独占一行。
+用 `\n` 拼成一串塞进单个控件的 `texts` 里，**AX 不会换行**，会挤成一行。
+
+所以服务端逐行下发，UI 用 `text1`~`text4` 分别渲染：
+
+```java
+for (int i = 0; i < 5; i++) {
+    p.put("npc_" + (i + 1), i < lines.size() ? "§f" + lines.get(i) : "§r");
+}
+```
+
+```aria
+val.text1.y = var.LY
+val.text1.texts = [packet['npc_1']]
+val.text2.y = var.LY + var.LH * 1.15
+val.text2.texts = [packet['npc_2']]
+```
+
+> 目前最多 4 行。超出的部分不显示。
+
+### 轮询间隔与反射缓存
+
+面板由 `ui.match` 打开，**这一刻还没有数据**。
+轮询太慢玩家就会盯着一个透明空面板等 —— 最初设 0.5 秒，体感明显卡顿。
+
+```java
+private static final long POLL_TICKS = 2L;   // 100ms
+```
+
+提速的同时**必须缓存反射入口**，否则每轮都 `Class.forName` + `getMethod`，
+反而比慢轮询更吃 CPU：
+
+```java
+private static Class<?> mgrCls;
+private static Object mgrInstance;
+private static Method getSessionsMethod;
+private static boolean reflected;
+```
 
 ### 前提：Chemdah 的箱子标题要固定
 

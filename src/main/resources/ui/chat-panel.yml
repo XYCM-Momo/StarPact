@@ -87,11 +87,32 @@ ui:
       val.line.x = (var.SW - var.TW * 0.1200) * 0.5
       val.line.y = var.TOP + var.BOT * 0.2400
 
-      val.text.width = var.TW
-      val.text.height = var.BOT * 0.4800
-      val.text.x = var.TX
-      val.text.y = var.TOP + var.BOT * 0.3200
-      val.text.texts = [packet['npc_text']]
+      var.LH = var.BOT * 0.1050
+      var.LY = var.TOP + var.BOT * 0.3200
+
+      val.text1.width = var.TW
+      val.text1.height = var.LH
+      val.text1.x = var.TX
+      val.text1.y = var.LY
+      val.text1.texts = [packet['npc_1']]
+
+      val.text2.width = var.TW
+      val.text2.height = var.LH
+      val.text2.x = var.TX
+      val.text2.y = var.LY + var.LH * 1.15
+      val.text2.texts = [packet['npc_2']]
+
+      val.text3.width = var.TW
+      val.text3.height = var.LH
+      val.text3.x = var.TX
+      val.text3.y = var.LY + var.LH * 2.30
+      val.text3.texts = [packet['npc_3']]
+
+      val.text4.width = var.TW
+      val.text4.height = var.LH
+      val.text4.x = var.TX
+      val.text4.y = var.LY + var.LH * 3.45
+      val.text4.texts = [packet['npc_4']]
 
       var.OW = var.SW * 0.2600
       var.FS = 16
@@ -105,102 +126,75 @@ ui:
       val.opt_bg0.height = var.OH
       val.opt_bg0.x = var.OX
       val.opt_bg0.y = var.BASE
-      val.opt_tx0.width = var.OW
-      val.opt_tx0.height = var.OH
-      val.opt_tx0.x = var.OX
-      val.opt_tx0.y = var.BASE
-      val.opt_tx0.texts = [packet['t0']]
+      val.opt_bg0.texts = [packet['t0']]
 
       val.opt_bg1.width = var.OW
       val.opt_bg1.height = var.OH
       val.opt_bg1.x = var.OX
       val.opt_bg1.y = var.BASE + (var.OH + var.OG)
-      val.opt_tx1.width = var.OW
-      val.opt_tx1.height = var.OH
-      val.opt_tx1.x = var.OX
-      val.opt_tx1.y = var.BASE + (var.OH + var.OG)
-      val.opt_tx1.texts = [packet['t1']]
+      val.opt_bg1.texts = [packet['t1']]
 
       val.opt_bg2.width = var.OW
       val.opt_bg2.height = var.OH
       val.opt_bg2.x = var.OX
       val.opt_bg2.y = var.BASE + (var.OH + var.OG) * 2
-      val.opt_tx2.width = var.OW
-      val.opt_tx2.height = var.OH
-      val.opt_tx2.x = var.OX
-      val.opt_tx2.y = var.BASE + (var.OH + var.OG) * 2
-      val.opt_tx2.texts = [packet['t2']]
+      val.opt_bg2.texts = [packet['t2']]
 
       val.opt_bg3.width = var.OW
       val.opt_bg3.height = var.OH
       val.opt_bg3.x = var.OX
       val.opt_bg3.y = var.BASE + (var.OH + var.OG) * 3
-      val.opt_tx3.width = var.OW
-      val.opt_tx3.height = var.OH
-      val.opt_tx3.x = var.OX
-      val.opt_tx3.y = var.BASE + (var.OH + var.OG) * 3
-      val.opt_tx3.texts = [packet['t3']]
+      val.opt_bg3.texts = [packet['t3']]
 
       val.opt_bg4.width = var.OW
       val.opt_bg4.height = var.OH
       val.opt_bg4.x = var.OX
       val.opt_bg4.y = var.BASE + (var.OH + var.OG) * 4
-      val.opt_tx4.width = var.OW
-      val.opt_tx4.height = var.OH
-      val.opt_tx4.x = var.OX
-      val.opt_tx4.y = var.BASE + (var.OH + var.OG) * 4
-      val.opt_tx4.texts = [packet['t4']]
+      val.opt_bg4.texts = [packet['t4']]
 
       val.opt_bg5.width = var.OW
       val.opt_bg5.height = var.OH
       val.opt_bg5.x = var.OX
       val.opt_bg5.y = var.BASE + (var.OH + var.OG) * 5
-      val.opt_tx5.width = var.OW
-      val.opt_tx5.height = var.OH
-      val.opt_tx5.x = var.OX
-      val.opt_tx5.y = var.BASE + (var.OH + var.OG) * 5
-      val.opt_tx5.texts = [packet['t5']]
+      val.opt_bg5.texts = [packet['t5']]
 
       val.shade.visible = packet['ready']
       val.name.visible = packet['ready']
       val.line.visible = packet['ready']
-      val.text.visible = packet['ready']
+      val.text1.visible = packet['ready']
+      val.text2.visible = packet['ready']
+      val.text3.visible = packet['ready']
+      val.text4.visible = packet['ready']
       var.o0 = 0
       if (packet['ready'] == 1 && packet['v0'] == 1) {
         var.o0 = 1
       }
       val.opt_bg0.visible = var.o0
-      val.opt_tx0.visible = var.o0
       var.o1 = 0
       if (packet['ready'] == 1 && packet['v1'] == 1) {
         var.o1 = 1
       }
       val.opt_bg1.visible = var.o1
-      val.opt_tx1.visible = var.o1
       var.o2 = 0
       if (packet['ready'] == 1 && packet['v2'] == 1) {
         var.o2 = 1
       }
       val.opt_bg2.visible = var.o2
-      val.opt_tx2.visible = var.o2
       var.o3 = 0
       if (packet['ready'] == 1 && packet['v3'] == 1) {
         var.o3 = 1
       }
       val.opt_bg3.visible = var.o3
-      val.opt_tx3.visible = var.o3
       var.o4 = 0
       if (packet['ready'] == 1 && packet['v4'] == 1) {
         var.o4 = 1
       }
       val.opt_bg4.visible = var.o4
-      val.opt_tx4.visible = var.o4
       var.o5 = 0
       if (packet['ready'] == 1 && packet['v5'] == 1) {
         var.o5 = 1
       }
       val.opt_bg5.visible = var.o5
-      val.opt_tx5.visible = var.o5
 
 controls:
   # 底部渐变遮罩：原神用一条从透明到深色的横条，让文字在任何画面上都看得清
@@ -250,8 +244,8 @@ controls:
       height: 1
       normal: ~200,175,110,150
 
-  text:
-    val: "text"
+  text1:
+    val: "text1"
     type: Texture
     attribute:
       point: ~top_left
@@ -259,13 +253,61 @@ controls:
       x: 30
       y: 450
       width: 300
-      height: 60
+      height: 22
       fontSize: 17
-      lineSpace: 24
       shadow: true
       center: true
       texts:
         - ~&f
+
+  text2:
+    val: "text2"
+    type: Texture
+    attribute:
+      point: ~top_left
+      visible: false
+      x: 30
+      y: 476
+      width: 300
+      height: 22
+      fontSize: 17
+      shadow: true
+      center: true
+      texts:
+        - ~&f
+
+  text3:
+    val: "text3"
+    type: Texture
+    attribute:
+      point: ~top_left
+      visible: false
+      x: 30
+      y: 502
+      width: 300
+      height: 22
+      fontSize: 17
+      shadow: true
+      center: true
+      texts:
+        - ~&f
+
+  text4:
+    val: "text4"
+    type: Texture
+    attribute:
+      point: ~top_left
+      visible: false
+      x: 30
+      y: 528
+      width: 300
+      height: 22
+      fontSize: 17
+      shadow: true
+      center: true
+      texts:
+        - ~&f
+
 
   opt_bg0:
     val: "opt_bg0"
@@ -281,29 +323,7 @@ controls:
       hover: ~40,60,72,225
       shape: ~round_rect
       radius: 13
-    action:
-      click: |-
-        Packet.send('starpact:chat_pick:0')
-    effect:
-      stroke:
-        width: 1
-        color: ~198,172,108,110
-
-  opt_tx0:
-    val: "opt_tx0"
-    type: Texture
-    attribute:
-      point: ~top_left
-      visible: false
       center: true
-      normal: ~26,30,40,190
-      hover: ~40,60,72,225
-      shape: ~round_rect
-      radius: 13
-      x: 312
-      y: 305
-      width: 150
-      height: 18
       fontSize: 16
       shadow: true
       texts:
@@ -311,6 +331,10 @@ controls:
     action:
       click: |-
         Packet.send('starpact:chat_pick:0')
+    effect:
+      stroke:
+        width: 1
+        color: ~198,172,108,110
 
   opt_bg1:
     val: "opt_bg1"
@@ -326,29 +350,7 @@ controls:
       hover: ~40,60,72,225
       shape: ~round_rect
       radius: 13
-    action:
-      click: |-
-        Packet.send('starpact:chat_pick:1')
-    effect:
-      stroke:
-        width: 1
-        color: ~198,172,108,110
-
-  opt_tx1:
-    val: "opt_tx1"
-    type: Texture
-    attribute:
-      point: ~top_left
-      visible: false
       center: true
-      normal: ~26,30,40,190
-      hover: ~40,60,72,225
-      shape: ~round_rect
-      radius: 13
-      x: 312
-      y: 335
-      width: 150
-      height: 18
       fontSize: 16
       shadow: true
       texts:
@@ -356,6 +358,10 @@ controls:
     action:
       click: |-
         Packet.send('starpact:chat_pick:1')
+    effect:
+      stroke:
+        width: 1
+        color: ~198,172,108,110
 
   opt_bg2:
     val: "opt_bg2"
@@ -371,29 +377,7 @@ controls:
       hover: ~40,60,72,225
       shape: ~round_rect
       radius: 13
-    action:
-      click: |-
-        Packet.send('starpact:chat_pick:2')
-    effect:
-      stroke:
-        width: 1
-        color: ~198,172,108,110
-
-  opt_tx2:
-    val: "opt_tx2"
-    type: Texture
-    attribute:
-      point: ~top_left
-      visible: false
       center: true
-      normal: ~26,30,40,190
-      hover: ~40,60,72,225
-      shape: ~round_rect
-      radius: 13
-      x: 312
-      y: 365
-      width: 150
-      height: 18
       fontSize: 16
       shadow: true
       texts:
@@ -401,6 +385,10 @@ controls:
     action:
       click: |-
         Packet.send('starpact:chat_pick:2')
+    effect:
+      stroke:
+        width: 1
+        color: ~198,172,108,110
 
   opt_bg3:
     val: "opt_bg3"
@@ -416,29 +404,7 @@ controls:
       hover: ~40,60,72,225
       shape: ~round_rect
       radius: 13
-    action:
-      click: |-
-        Packet.send('starpact:chat_pick:3')
-    effect:
-      stroke:
-        width: 1
-        color: ~198,172,108,110
-
-  opt_tx3:
-    val: "opt_tx3"
-    type: Texture
-    attribute:
-      point: ~top_left
-      visible: false
       center: true
-      normal: ~26,30,40,190
-      hover: ~40,60,72,225
-      shape: ~round_rect
-      radius: 13
-      x: 312
-      y: 395
-      width: 150
-      height: 18
       fontSize: 16
       shadow: true
       texts:
@@ -446,6 +412,10 @@ controls:
     action:
       click: |-
         Packet.send('starpact:chat_pick:3')
+    effect:
+      stroke:
+        width: 1
+        color: ~198,172,108,110
 
   opt_bg4:
     val: "opt_bg4"
@@ -461,29 +431,7 @@ controls:
       hover: ~40,60,72,225
       shape: ~round_rect
       radius: 13
-    action:
-      click: |-
-        Packet.send('starpact:chat_pick:4')
-    effect:
-      stroke:
-        width: 1
-        color: ~198,172,108,110
-
-  opt_tx4:
-    val: "opt_tx4"
-    type: Texture
-    attribute:
-      point: ~top_left
-      visible: false
       center: true
-      normal: ~26,30,40,190
-      hover: ~40,60,72,225
-      shape: ~round_rect
-      radius: 13
-      x: 312
-      y: 425
-      width: 150
-      height: 18
       fontSize: 16
       shadow: true
       texts:
@@ -491,6 +439,10 @@ controls:
     action:
       click: |-
         Packet.send('starpact:chat_pick:4')
+    effect:
+      stroke:
+        width: 1
+        color: ~198,172,108,110
 
   opt_bg5:
     val: "opt_bg5"
@@ -506,29 +458,7 @@ controls:
       hover: ~40,60,72,225
       shape: ~round_rect
       radius: 13
-    action:
-      click: |-
-        Packet.send('starpact:chat_pick:5')
-    effect:
-      stroke:
-        width: 1
-        color: ~198,172,108,110
-
-  opt_tx5:
-    val: "opt_tx5"
-    type: Texture
-    attribute:
-      point: ~top_left
-      visible: false
       center: true
-      normal: ~26,30,40,190
-      hover: ~40,60,72,225
-      shape: ~round_rect
-      radius: 13
-      x: 312
-      y: 455
-      width: 150
-      height: 18
       fontSize: 16
       shadow: true
       texts:
@@ -536,3 +466,7 @@ controls:
     action:
       click: |-
         Packet.send('starpact:chat_pick:5')
+    effect:
+      stroke:
+        width: 1
+        color: ~198,172,108,110

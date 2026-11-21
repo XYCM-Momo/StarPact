@@ -37,8 +37,14 @@ public class ChatBridge implements Listener {
     /** AX 对话 UI 的 ID。 */
     public static final String UI_ID = "starpact:chat_panel";
 
-    /** 轮询间隔（tick）。20 = 1 秒。 */
-    private static final long POLL_TICKS = 10L;
+    /**
+     * 轮询间隔（tick）。20 = 1 秒。
+     *
+     * <p>2 tick（100ms）：面板由 ui.match 一打开就是空的，
+     * 轮询太慢会让玩家盯着空面板等 —— 实测 0.5 秒就能感觉到卡顿。
+     * 会话读取很轻（反射几个 getter + 一个 HashMap 查找），可以跑勤一点。
+     */
+    private static final long POLL_TICKS = 2L;
 
     private final StarPactPlugin plugin;
 
@@ -86,7 +92,15 @@ public class ChatBridge implements Listener {
         // 这里只负责推数据。自己再 open 一次会和 match 打架。
         String fp = fingerprint(snap);
         if (!fp.equals(lastPush.get(uid))) {
+            long t0 = System.nanoTime();
             push(player, snap);
+            // 诊断：首次推送比后续慢很多说明面板还没挂载，数据发早了
+            if (plugin.spConfig().debug()) {
+                plugin.getLogger().info("[对话] 推送完成 用时="
+                        + (System.nanoTime() - t0) / 1_000_000.0 + "ms"
+                        + " 行=" + snap.npcLines().size()
+                        + " 选项=" + snap.replies().size());
+            }
         }
     }
 
@@ -101,8 +115,19 @@ public class ChatBridge implements Listener {
         // 少了这个键整个面板就是全透明的。
         p.put("ready", 1);
         p.put("npc_name", snap.title().isEmpty() ? "\u00a7r" : "\u00a7e" + snap.title());
-        p.put("npc_text", snap.npcLines().isEmpty()
-                ? "\u00a77..." : "\u00a7f" + String.join("\n", snap.npcLines()));
+        // 台词分两部分下发：
+        //   npc_text  —— 用 \n 拼成的一整段（兼容旧写法）
+        //   npc_1..npc_4 —— 逐行，给 UI 用 texts 数组渲染
+        // Chemdah 的 npc: 是一个列表，每项应当独占一行；
+        // 塞进单个 text 控件的 \n 在 AX 里不会被当成换行，会挤成一行。
+        List<String> lines = snap.npcLines();
+        p.put("npc_text", lines.isEmpty()
+                ? "\u00a77..." : "\u00a7f" + String.join("\n", lines));
+        for (int i = 0; i < 5; i++) {
+            p.put("npc_" + (i + 1),
+                    i < lines.size() ? "\u00a7f" + lines.get(i) : "\u00a7r");
+            p.put("n" + (i + 1), i < lines.size() ? 1 : 0);
+        }
         for (int i = 0; i < 6; i++) {
             boolean has = i < snap.replies().size();
             p.put("v" + i, has ? 1 : 0);

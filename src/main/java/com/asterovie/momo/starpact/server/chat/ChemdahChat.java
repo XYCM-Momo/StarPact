@@ -41,13 +41,40 @@ public final class ChemdahChat {
     }
 
     /** 取玩家当前的对话会话；没有返回 null。 */
-    public static Object sessionOf(StarPactPlugin plugin, Player player) {
+    /**
+     * 缓存的反射入口。
+     *
+     * <p>轮询每 100ms 跑一次，每次都 {@code Class.forName} + {@code getMethod}
+     * 开销很大（这几步都要遍历方法表）。这里只查一次，之后复用。
+     */
+    private static Class<?> mgrCls;
+    private static Object mgrInstance;
+    private static java.lang.reflect.Method getSessionsMethod;
+    private static boolean reflected;
+
+    private static void initReflection(StarPactPlugin plugin) {
+        if (reflected) {
+            return;
+        }
+        reflected = true;
         try {
             ClassLoader cl = plugin.getClass().getClassLoader();
-            Class<?> mgrCls = Class.forName(
+            mgrCls = Class.forName(
                     "ink.ptms.chemdah.core.conversation.ConversationManager", false, cl);
-            Object mgr = mgrCls.getField("INSTANCE").get(null);
-            Map<?, ?> sessions = (Map<?, ?>) mgrCls.getMethod("getSessions").invoke(mgr);
+            mgrInstance = mgrCls.getField("INSTANCE").get(null);
+            getSessionsMethod = mgrCls.getMethod("getSessions");
+        } catch (Throwable t) {
+            mgrCls = null;
+        }
+    }
+
+    public static Object sessionOf(StarPactPlugin plugin, Player player) {
+        initReflection(plugin);
+        if (mgrCls == null) {
+            return null;
+        }
+        try {
+            Map<?, ?> sessions = (Map<?, ?>) getSessionsMethod.invoke(mgrInstance);
             if (sessions == null || sessions.isEmpty()) {
                 return null;
             }
