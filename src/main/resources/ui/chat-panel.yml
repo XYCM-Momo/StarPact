@@ -90,29 +90,45 @@ ui:
       var.LH = var.BOT * 0.1050
       var.LY = var.TOP + var.BOT * 0.3200
 
-      val.text1.width = var.TW
+      var.EM = 17 * 0.435
+      var.TEM = packet['text_em']
+      if (var.TEM == null) {
+        var.TEM = 0
+      }
+      var.TPIX = var.TEM * var.EM
+      if (var.TPIX < var.EM * 6) {
+        var.TPIX = var.EM * 6
+      }
+
+      val.text1.width = var.TPIX
       val.text1.height = var.LH
-      val.text1.x = var.TX
+      val.text1.x = (var.SW - var.TPIX) * 0.5
       val.text1.y = var.LY
       val.text1.texts = [packet['npc_1']]
 
-      val.text2.width = var.TW
+      val.text2.width = var.TPIX
       val.text2.height = var.LH
-      val.text2.x = var.TX
+      val.text2.x = (var.SW - var.TPIX) * 0.5
       val.text2.y = var.LY + var.LH * 1.15
       val.text2.texts = [packet['npc_2']]
 
-      val.text3.width = var.TW
+      val.text3.width = var.TPIX
       val.text3.height = var.LH
-      val.text3.x = var.TX
+      val.text3.x = (var.SW - var.TPIX) * 0.5
       val.text3.y = var.LY + var.LH * 2.30
       val.text3.texts = [packet['npc_3']]
 
-      val.text4.width = var.TW
+      val.text4.width = var.TPIX
       val.text4.height = var.LH
-      val.text4.x = var.TX
+      val.text4.x = (var.SW - var.TPIX) * 0.5
       val.text4.y = var.LY + var.LH * 3.45
       val.text4.texts = [packet['npc_4']]
+
+      val.skip_area.x = 0
+      val.skip_area.y = var.TOP
+      val.skip_area.width = var.SW - var.SW * 0.3600
+      val.skip_area.height = var.BOT
+      val.skip_area.visible = packet['ready']
 
       var.OW = var.SW * 0.2600
       var.FS = 16
@@ -166,35 +182,61 @@ ui:
       val.text3.visible = packet['ready']
       val.text4.visible = packet['ready']
       var.o0 = 0
-      if (packet['ready'] == 1 && packet['v0'] == 1) {
+      if (packet['ready'] == 1 && packet['v0'] == 1 && packet['typing'] == 0) {
         var.o0 = 1
       }
       val.opt_bg0.visible = var.o0
       var.o1 = 0
-      if (packet['ready'] == 1 && packet['v1'] == 1) {
+      if (packet['ready'] == 1 && packet['v1'] == 1 && packet['typing'] == 0) {
         var.o1 = 1
       }
       val.opt_bg1.visible = var.o1
       var.o2 = 0
-      if (packet['ready'] == 1 && packet['v2'] == 1) {
+      if (packet['ready'] == 1 && packet['v2'] == 1 && packet['typing'] == 0) {
         var.o2 = 1
       }
       val.opt_bg2.visible = var.o2
       var.o3 = 0
-      if (packet['ready'] == 1 && packet['v3'] == 1) {
+      if (packet['ready'] == 1 && packet['v3'] == 1 && packet['typing'] == 0) {
         var.o3 = 1
       }
       val.opt_bg3.visible = var.o3
       var.o4 = 0
-      if (packet['ready'] == 1 && packet['v4'] == 1) {
+      if (packet['ready'] == 1 && packet['v4'] == 1 && packet['typing'] == 0) {
         var.o4 = 1
       }
       val.opt_bg4.visible = var.o4
       var.o5 = 0
-      if (packet['ready'] == 1 && packet['v5'] == 1) {
+      if (packet['ready'] == 1 && packet['v5'] == 1 && packet['typing'] == 0) {
         var.o5 = 1
       }
       val.opt_bg5.visible = var.o5
+
+tasks:
+  # 分辨率变化检测。
+  # sync 只在服务端推数据时执行，玩家切换分辨率/窗口大小后坐标不会重算，
+  # 界面就会错位。这里每 0.5 秒比一次屏幕尺寸，变了就让服务端重推一次数据
+  # （重推会带着完整数据跑一遍 sync，布局自然按新尺寸重算）。
+  resize_watch:
+    type: loop
+    time: 0
+    cycle: 500
+    run: |-
+      var.nw = Screen.getWidth()
+      var.nh = Screen.getHeight()
+      var.ow = 0
+      var.oh = 0
+      if (val.shade.lastW != null) {
+        var.ow = val.shade.lastW
+      }
+      if (val.shade.lastH != null) {
+        var.oh = val.shade.lastH
+      }
+      if (var.nw != var.ow || var.nh != var.oh) {
+        val.shade.lastW = var.nw
+        val.shade.lastH = var.nh
+        Packet.send('starpact:chat_resize')
+      }
 
 controls:
   # 底部渐变遮罩：原神用一条从透明到深色的横条，让文字在任何画面上都看得清
@@ -246,7 +288,7 @@ controls:
 
   text1:
     val: "text1"
-    type: Texture
+    type: Text
     attribute:
       point: ~top_left
       visible: false
@@ -256,13 +298,13 @@ controls:
       height: 22
       fontSize: 17
       shadow: true
-      center: true
+      alignment: ~left
       texts:
         - ~&f
 
   text2:
     val: "text2"
-    type: Texture
+    type: Text
     attribute:
       point: ~top_left
       visible: false
@@ -272,13 +314,13 @@ controls:
       height: 22
       fontSize: 17
       shadow: true
-      center: true
+      alignment: ~left
       texts:
         - ~&f
 
   text3:
     val: "text3"
-    type: Texture
+    type: Text
     attribute:
       point: ~top_left
       visible: false
@@ -288,13 +330,13 @@ controls:
       height: 22
       fontSize: 17
       shadow: true
-      center: true
+      alignment: ~left
       texts:
         - ~&f
 
   text4:
     val: "text4"
-    type: Texture
+    type: Text
     attribute:
       point: ~top_left
       visible: false
@@ -304,10 +346,28 @@ controls:
       height: 22
       fontSize: 17
       shadow: true
-      center: true
+      alignment: ~left
       texts:
         - ~&f
 
+
+  # 点击台词区域 → 跳过打字动画，直接显示全文。
+  # 铺在整个底部对话条上（不含右侧选项区），完全透明但能接收点击。
+  # 选项打完之后才显示，两者不会抢点击。
+  skip_area:
+    val: "skip_area"
+    type: Texture
+    attribute:
+      point: ~top_left
+      visible: false
+      x: 0
+      y: 500
+      width: 300
+      height: 90
+      normal: ~0,0,0,0
+    action:
+      click: |-
+        Packet.send('starpact:chat_skip')
 
   opt_bg0:
     val: "opt_bg0"

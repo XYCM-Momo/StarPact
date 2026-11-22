@@ -134,6 +134,17 @@ public final class SpConfig {
 
     // ── display ──────────────────────────────────────────────
 
+    /**
+     * 对话打字机的速度：每秒显示几个字。
+     *
+     * <p>实际推进节奏受轮询间隔限制（100ms 一次），所以这个值会被取整成
+     * 「每 N 次轮询推进 1 个字」：10 → 每秒 10 字，5 → 每秒 5 字，30 → 每秒 30 字。
+     */
+    public int chatTypeSpeed() {
+        int v = cfg().getInt("chat.type-speed", cfg().getInt("chat.type_speed", 10));
+        return Math.max(1, Math.min(100, v));
+    }
+
     public int maxTracks() {
         return Math.max(1, Math.min(8, cfg().getInt("display.max-tracks",
                 cfg().getInt("display.max_tracks", 3))));

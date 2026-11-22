@@ -71,6 +71,10 @@ public final class PanelListener implements Listener {
                 }
                 plugin.chatBridge().onPick(player, slot);
             }
+            // 点击台词区域 → 跳过打字动画
+            case "chat_skip" -> plugin.chatBridge().onSkip(player);
+            // 客户端分辨率变了 → 重推一次数据，让 sync 按新尺寸重算布局
+            case "chat_resize" -> plugin.chatBridge().onResize(player);
             case "ready" -> {
                 // 只做节流记录，不推数据
                 plugin.panel().allowReady(player.getUniqueId());
