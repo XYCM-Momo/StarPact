@@ -86,6 +86,7 @@ public final class StarPactPlugin extends JavaPlugin {
         startTasks();
         installAxKeyConfig();
         scheduleChemdahConversationReload();
+        scheduleItemPrewarm();
 
         getLogger().info("StarPact Plugin 已成功启用！");
         getLogger().info("  Chemdah: " + (chemdah.available() ? "已接入" : "未接入")
@@ -262,6 +263,28 @@ public final class StarPactPlugin extends JavaPlugin {
     // ── 重载 ──────────────────────────────────────────────────
 
     /** /sp reload：重读 config + language + 两个 UI 定义，并把结果推给所有在线玩家。 */
+    /**
+     * 后台预热物品解析缓存。
+     *
+     * <p>第一次按 J 打开面板时要把所有奖励物品走一遍 MM/NI 反射查询，
+     * 那一下会明显卡顿。这里在启动后异步把缓存灌满。
+     *
+     * <p><b>必须异步</b>：解析要走反射 + 物品库查询，同步跑会拖慢服务端启动，
+     * 物品多的服可能要几百毫秒甚至更久。
+     * <p><b>必须延迟几秒</b>：物品库（MythicMobs / NeigeItems）启动时可能还没加载完，
+     * 太早解析会拿到空结果并把空的也缓存起来。
+     */
+    private void scheduleItemPrewarm() {
+        Bukkit.getScheduler().runTaskLaterAsynchronously(this, () -> {
+            try {
+                int n = items.prewarm(quests);
+                getLogger().info("物品解析预热完成：" + n + " 条（后台线程，不影响开服）");
+            } catch (Throwable t) {
+                getLogger().warning("物品解析预热失败: " + t);
+            }
+        }, 100L);   // 5 秒
+    }
+
     public void reloadAll() {
         config.reload();
         lang.reload();
@@ -269,6 +292,12 @@ public final class StarPactPlugin extends JavaPlugin {
         if (quests != null) {
             quests.reload();
         }
+        // 物品解析缓存要清掉：物品库里的名称/Lore 可能已经改了
+        if (items != null) {
+            items.clearCache();
+        }
+        // 清完立刻在后台重新预热，否则下次开面板又要现场解析
+        scheduleItemPrewarm();
 
         // 重新注册两个 UI（可能改了 ui/*.yml）
         if (ax.available()) {

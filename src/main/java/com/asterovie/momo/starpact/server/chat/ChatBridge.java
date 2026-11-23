@@ -191,13 +191,13 @@ public class ChatBridge implements Listener {
         }
         p.put("npc_text", lines.isEmpty() ? "\u00a77..." : "\u00a7f" + String.join("\n", lines));
 
-        // 居中对齐用的宽度：取「完整台词」的估算宽度，而不是当前已显示的部分。
-        // 这样打字过程中算出的左边界始终不变，文字不会跟着字数左右移动。
-        int widestEm = 0;
-        for (String s : lines) {
-            widestEm = Math.max(widestEm, textWidthEm(s));
+        // 居中对齐用的宽度：每行单独算，不能四行共用「最宽那行」的宽度 ——
+        // 否则短行也会贴着最宽行的左边界，看起来像从第一行开头往右排。
+        // 用的是「完整行」的宽度而不是已显示部分，所以打字过程中不会左右移动。
+        for (int i = 1; i <= 4; i++) {
+            int em = i <= lines.size() ? textWidthEm(lines.get(i - 1)) : 0;
+            p.put("em" + i, em);
         }
-        p.put("text_em", widestEm);
 
         for (int i = 0; i < 6; i++) {
             boolean has = i < snap.replies().size();

@@ -122,6 +122,7 @@ ui:
 | `shade` | 底部渐变遮罩（上透明 → 下深色） |
 | `name` / `line` | NPC 名、金色短线 |
 | `text1..4` | 台词，**每行一个控件** |
+| `skip_area` | 全屏透明点击层，点任意位置跳过打字 |
 | `opt_bg0..5` | 选项按钮（圆角胶囊 + hover + 文字 + 点击，**单层**） |
 
 ### 选项必须是单层控件
@@ -170,6 +171,72 @@ val.text2.texts = [packet['npc_2']]
 ```
 
 > 目前最多 4 行。超出的部分不显示。
+
+### 台词居中：用锚点，不要手算宽度
+
+每行台词都要**各自居中**（短行在中间，长行两边伸出去）。
+
+**正确做法**——交给 AX 的锚点系统：
+
+```yaml
+text1:
+  type: Texture        # 不是 Text。quest-panel 里能正常居中的都是 Texture
+  point: ~top_center   # 锚点居中：x 是「相对父级中心的偏移」
+  normal: ~0,0,0,0     # 透明底，Texture 需要它参与布局
+  center: true         # 文字在控件内居中
+  through: true
+```
+
+```aria
+val.text1.width = var.TBOX    // 固定框，比如 78% 屏宽
+val.text1.x = 0               // 中心对齐，不需要算任何宽度
+```
+
+**走过的弯路（别再重复）**：
+
+1. **手算左边界** `x = (屏宽 - 文字宽)/2` —— 需要估算文字宽度，而 AX / Java
+   都拿不到字体度量。按「汉字 1em、ASCII 0.55em」估，`fontSize 17` 时
+   实际每字只有约 7.4px（不是 17px），误差会随中英文比例漂移，位置总是偏。
+2. **四行共用「最宽行」的宽度** —— 短行会贴着同一个左边界，
+   看起来像「全部从第一行开头往右排」。
+3. **`type: Text` + `center: true`** —— 实测不居中，会退化成左对齐。
+4. **`alignment: ~center`** —— 文档里有，但这个场景不生效。
+
+> 锚点表在 `Wiki ArcartX/UI篇/控件公共属性.md`：
+> `top_left` = 左上角，`top_center` = 顶部中间，`middle_center` = 正中间 …
+> **遇到 AX 定位问题先查这张表，不要靠试。**
+
+### 点击任意位置跳过打字
+
+`skip_area` 是一个铺满全屏的透明 `Texture`：
+
+```yaml
+skip_area:
+  type: Texture
+  normal: ~0,0,0,0
+  action:
+    click: Packet.send('starpact:chat_skip')
+```
+
+```aria
+val.skip_area.width = var.SW
+val.skip_area.height = var.SH
+```
+
+**⚠️ 必须定义在 `opt_bg0..5` 之前**——顶级控件按定义顺序决定层级，
+后定义的在上层。`skip_area` 放前面才不会挡住选项按钮的点击。
+
+服务端收到 `chat_skip` 后把打字进度直接拉满：
+
+```java
+public void onSkip(Player player) {
+    int total = totalVisible(snap.npcLines());
+    if (typed.getOrDefault(uid, 0) >= total) return;   // 已打完，什么都不做
+    typed.put(uid, total);
+    push(player, snap);
+}
+```
+
 
 ### 轮询间隔与反射缓存
 

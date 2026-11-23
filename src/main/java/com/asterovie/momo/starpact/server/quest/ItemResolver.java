@@ -66,11 +66,98 @@ public final class ItemResolver {
     }
 
     /**
-     * 解析成真实的 ItemStack（用于 Slot 控件渲染图标）。
+     * 解析结果缓存。
+     *
+     * <p>每次按 J 打开任务面板都会重新解析所有奖励物品，而解析要走
+     * MythicMobs / NeigeItems 的反射查询 + ItemStack 克隆，开销不小 ——
+     * 实测这就是「按 J 有明显卡顿」的来源。
+     *
+     * <p>键用 {@code provider|key|amount|icon}，几点注意：
+     * <ul>
+     *   <li>存的是 {@code clone()}，避免调用方改到缓存里的实例；</li>
+     *   <li>{@code /sp reload} 时清空（物品库配置可能变了）；</li>
+     *   <li>上限定在 512，防止长期运行后无限增长。</li>
+     * </ul>
+     */
+    private final java.util.Map<String, org.bukkit.inventory.ItemStack> cache =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** 清空解析缓存（reload 时调用）。 */
+    public void clearCache() {
+        cache.clear();
+    }
+
+    /**
+     * 预解析所有任务配置里的奖励，把结果灌进缓存。
+     *
+     * <p>不预热的话，「第一次按 J 打开面板」仍会卡一下 —— 那次请求要把所有
+     * 奖励物品走一遍 MM/NI 反射查询。这个方法给启动时的异步预热用，
+     * **调用方必须放到后台线程**，不要阻塞服务端启动。
+     *
+     * @return 实际解析成功的条数
+     */
+    public int prewarm(QuestConfigLoader loader) {
+        if (loader == null || (!mythicAvailable && !neigeAvailable)) {
+            return 0;   // 两个物品库都没装，预解析没有意义
+        }
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        int done = 0;
+        for (String qid : loader.ids()) {
+            QuestConfig qc = loader.get(qid);
+            if (qc == null || qc.rewards().isEmpty()) {
+                continue;
+            }
+            for (QuestConfig.Reward r : qc.rewards()) {
+                String k = cacheKey(r);
+                if (k == null || !seen.add(k)) {
+                    continue;   // 已经处理过同一个奖励
+                }
+                try {
+                    if (resolve(r) != null) {
+                        done++;
+                    }
+                } catch (Throwable ignored) {
+                    // 单条失败不影响其它条
+                }
+            }
+        }
+        return done;
+    }
+
+    /**
+     * 解析成真实的 ItemStack（用于 Slot 控件渲染图标），结果带缓存。
      *
      * <p>解析失败返回 null —— 调用方决定兜底（通常是显示纯文字）。
      */
     public org.bukkit.inventory.ItemStack resolve(QuestConfig.Reward reward) {
+        if (reward == null) {
+            return null;
+        }
+        String ck = cacheKey(reward);
+        org.bukkit.inventory.ItemStack hit = ck == null ? null : cache.get(ck);
+        if (hit != null) {
+            return hit.clone();
+        }
+        org.bukkit.inventory.ItemStack made = resolveUncached(reward);
+        if (ck != null && made != null) {
+            if (cache.size() > 512) {
+                cache.clear();
+            }
+            cache.put(ck, made.clone());
+        }
+        return made;
+    }
+
+    /** 缓存键；拿不到有效 key 时返回 null（不缓存）。 */
+    private static String cacheKey(QuestConfig.Reward r) {
+        if (r == null || r.key() == null || r.key().isBlank()) {
+            return null;
+        }
+        return r.provider() + '|' + r.key() + '|' + r.amount() + '|' + r.icon();
+    }
+
+    /** 真正干活的部分（原 resolve 的实现）。 */
+    private org.bukkit.inventory.ItemStack resolveUncached(QuestConfig.Reward reward) {
         if (reward == null) {
             return null;
         }

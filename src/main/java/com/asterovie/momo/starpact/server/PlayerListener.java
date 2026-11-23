@@ -30,6 +30,9 @@ public final class PlayerListener implements Listener {
     @EventHandler(priority = EventPriority.MONITOR)
     public void onJoin(PlayerJoinEvent event) {
         Player p = event.getPlayer();
+        // 记进服时刻：HUD 在接下来的 30 秒内每次刷新都重开一次 UI，
+        // 因为客户端此时可能还没收到 UI 定义（open 被吞掉但返回成功）。
+        plugin.hud().markJoined(p);
         // ArcartX 的按键表是随 setting 包下发的。插件注册的按键要在这个包之后
         // 才会出现在客户端按键设置里，所以进服后补发一次。
         plugin.getServer().getScheduler().runTaskLater(plugin, () -> {

@@ -91,43 +91,36 @@ ui:
       var.LY = var.TOP + var.BOT * 0.3200
 
       var.EM = 17 * 0.435
-      var.TEM = packet['text_em']
-      if (var.TEM == null) {
-        var.TEM = 0
-      }
-      var.TPIX = var.TEM * var.EM
-      if (var.TPIX < var.EM * 6) {
-        var.TPIX = var.EM * 6
-      }
+      var.TBOX = var.SW * 0.7800
 
-      val.text1.width = var.TPIX
+      val.text1.width = var.TBOX
       val.text1.height = var.LH
-      val.text1.x = (var.SW - var.TPIX) * 0.5
+      val.text1.x = 0
       val.text1.y = var.LY
       val.text1.texts = [packet['npc_1']]
 
-      val.text2.width = var.TPIX
+      val.text2.width = var.TBOX
       val.text2.height = var.LH
-      val.text2.x = (var.SW - var.TPIX) * 0.5
+      val.text2.x = 0
       val.text2.y = var.LY + var.LH * 1.15
       val.text2.texts = [packet['npc_2']]
 
-      val.text3.width = var.TPIX
+      val.text3.width = var.TBOX
       val.text3.height = var.LH
-      val.text3.x = (var.SW - var.TPIX) * 0.5
+      val.text3.x = 0
       val.text3.y = var.LY + var.LH * 2.30
       val.text3.texts = [packet['npc_3']]
 
-      val.text4.width = var.TPIX
+      val.text4.width = var.TBOX
       val.text4.height = var.LH
-      val.text4.x = (var.SW - var.TPIX) * 0.5
+      val.text4.x = 0
       val.text4.y = var.LY + var.LH * 3.45
       val.text4.texts = [packet['npc_4']]
 
       val.skip_area.x = 0
-      val.skip_area.y = var.TOP
-      val.skip_area.width = var.SW - var.SW * 0.3600
-      val.skip_area.height = var.BOT
+      val.skip_area.y = 0
+      val.skip_area.width = var.SW
+      val.skip_area.height = var.SH
       val.skip_area.visible = packet['ready']
 
       var.OW = var.SW * 0.2600
@@ -288,9 +281,9 @@ controls:
 
   text1:
     val: "text1"
-    type: Text
+    type: Texture
     attribute:
-      point: ~top_left
+      point: ~top_center
       visible: false
       x: 30
       y: 450
@@ -298,15 +291,17 @@ controls:
       height: 22
       fontSize: 17
       shadow: true
-      alignment: ~left
+      normal: ~0,0,0,0
+      center: true
+      through: true
       texts:
         - ~&f
 
   text2:
     val: "text2"
-    type: Text
+    type: Texture
     attribute:
-      point: ~top_left
+      point: ~top_center
       visible: false
       x: 30
       y: 476
@@ -314,15 +309,17 @@ controls:
       height: 22
       fontSize: 17
       shadow: true
-      alignment: ~left
+      normal: ~0,0,0,0
+      center: true
+      through: true
       texts:
         - ~&f
 
   text3:
     val: "text3"
-    type: Text
+    type: Texture
     attribute:
-      point: ~top_left
+      point: ~top_center
       visible: false
       x: 30
       y: 502
@@ -330,15 +327,17 @@ controls:
       height: 22
       fontSize: 17
       shadow: true
-      alignment: ~left
+      normal: ~0,0,0,0
+      center: true
+      through: true
       texts:
         - ~&f
 
   text4:
     val: "text4"
-    type: Text
+    type: Texture
     attribute:
-      point: ~top_left
+      point: ~top_center
       visible: false
       x: 30
       y: 528
@@ -346,14 +345,16 @@ controls:
       height: 22
       fontSize: 17
       shadow: true
-      alignment: ~left
+      normal: ~0,0,0,0
+      center: true
+      through: true
       texts:
         - ~&f
 
 
-  # 点击台词区域 → 跳过打字动画，直接显示全文。
-  # 铺在整个底部对话条上（不含右侧选项区），完全透明但能接收点击。
-  # 选项打完之后才显示，两者不会抢点击。
+  # 点击屏幕任意位置 → 跳过打字动画，直接显示全文。
+  # 铺满整个屏幕，完全透明但能接收点击。
+  # ⚠️ 必须定义在 opt_bg0..5 之前（更底层），否则会挡住选项按钮的点击。
   skip_area:
     val: "skip_area"
     type: Texture

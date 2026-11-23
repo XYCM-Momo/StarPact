@@ -30,6 +30,23 @@ public final class HudService {
 
     /** 已经为这个玩家打开过 AX HUD */
     private final Set<UUID> opened = ConcurrentHashMap.newKeySet();
+    /**
+     * 玩家进服时刻，用于「进服后宽容期」判断。
+     *
+     * <p>客户端刚连上时，ArcartX 的 UI 定义还在下发，这时候 {@code open()}
+     * 会返回成功但实际被吞掉。宽容期内每次刷新都重开一遍，代价可忽略
+     * （AX 对已打开的 UI 会忽略重复 open），换来「HUD 一定会显示」。
+     */
+    private final Map<UUID, Long> joinedAt = new ConcurrentHashMap<>();
+
+    /** 宽容期时长：30 秒，足够覆盖加载慢的客户端。 */
+    private static final long JOIN_GRACE_MS = 30_000L;
+
+    /** 进服宽容期内允许的额外重开次数（不含首次）。 */
+    private static final int JOIN_REOPEN_TIMES = 3;
+
+    /** 每个玩家已经用掉的额外重开次数。 */
+    private final Map<UUID, Integer> reopenUsed = new ConcurrentHashMap<>();
     /** 上次推送时的任务 ID 集合，用于判断「是否该播放入场动画」。 */
     private final Map<UUID, String> lastAnimKey = new java.util.concurrent.ConcurrentHashMap<>();
 
@@ -100,8 +117,28 @@ public final class HudService {
             nowStart.merge(e.questId(), e.startTime(), Math::max);
         }
         Map<String, Long> before = lastKnownQuests.get(uid);
-        // 首次见到这个玩家时不触发（进服不该自动追）
-        if (before != null) {
+        // before == null 说明这是「进服后第一次刷新」。
+        // 此时不能靠「有没有新任务」来判定，但要恢复上次追踪的那个任务 ——
+        // 玩家上次下线时正在追踪 A，重新进服应该继续追踪 A 并把导航重新下发，
+        // 否则表现就是「有时候进服没有自动导航」。
+        boolean firstSeen = before == null;
+
+        if (firstSeen) {
+            boolean restored = trackedId != null && !trackedId.isBlank();
+            if (restored) {
+                // 优先：恢复上次追踪的目标，并重放它的追踪指令（导航等）
+                plugin.panel().runTrackCommands(player, trackedId);
+            } else if (!all.isEmpty()) {
+                // 没有追踪记录：自动追踪「最新接取」的那个任务。
+                // all 已按接取时间升序排列，最后一条就是最新的。
+                TrackEntry pick = all.get(all.size() - 1);
+                trackedId = pick.questId();
+                plugin.prefs().setTracked(uid, trackedId);
+                plugin.panel().runTrackCommands(player, trackedId);
+            }
+        }
+
+        if (!firstSeen) {
             String freshId = null;
             for (TrackEntry e : all) {
                 Long prev = before.get(e.questId());
@@ -141,15 +178,26 @@ public final class HudService {
             // 每 2 秒的轮询都重开一次，代价极小（AX 内部对已打开的 UI 会直接忽略），
             // 换来的是「无论如何最终一定会显示」。
             if (plugin.prefs().of(player.getUniqueId()).visible && !tracks.isEmpty()) {
-                if (force || !opened.contains(player.getUniqueId())) {
+                // 进服宽容期内「有限次重开」：客户端刚连上时 UI 定义还没下发完，
+                // open() 会返回 true 但实际被吞掉。
+                //
+                // ⚠️ 不能每 2 秒无限重开 —— 实测那样 HUD 会「显示一下就消失」，
+                // 因为重复 open 会让 AX 重建 UI。只在记账次数还没用完时补开几次，
+                // 补完就回归「只开一次」的正常逻辑。
+                boolean needOpen = force || !opened.contains(uid);
+                if (!needOpen && inJoinGrace(uid) && reopenBudget(uid) > 0) {
+                    needOpen = true;
+                    useReopenBudget(uid);
+                }
+                if (needOpen) {
                     boolean ok = plugin.ax().open(player, HudRenderer.UI_ID);
                     if (ok) {
-                        opened.add(player.getUniqueId());
+                        opened.add(uid);
                     } else {
-                        opened.remove(player.getUniqueId());
+                        opened.remove(uid);
                     }
                 }
-            } else if (tracks.isEmpty() && opened.contains(player.getUniqueId())) {
+            } else if (tracks.isEmpty() && opened.contains(uid)) {
                 // 没有任务可显示：直接关掉 UI（不做淡出，任务完成了就该干脆利落地消失）
                 plugin.ax().close(player, HudRenderer.UI_ID);
                 opened.remove(player.getUniqueId());
@@ -226,6 +274,37 @@ public final class HudService {
     public void resetOpened() {
         opened.clear();
     }
+
+    /** 记录进服时刻，开启宽容期。 */
+    public void markJoined(Player player) {
+        if (player != null) {
+            joinedAt.put(player.getUniqueId(), System.currentTimeMillis());
+        }
+    }
+
+    /** 是否处在「进服宽容期」内 —— 此时每次刷新都重开 UI。 */
+    private boolean inJoinGrace(UUID uid) {
+        Long at = joinedAt.get(uid);
+        if (at == null) {
+            return false;
+        }
+        if (System.currentTimeMillis() - at > JOIN_GRACE_MS) {
+            joinedAt.remove(uid);
+            return false;
+        }
+        return true;
+    }
+
+    /** 剩余可用的额外重开次数。 */
+    private int reopenBudget(UUID uid) {
+        return JOIN_REOPEN_TIMES - reopenUsed.getOrDefault(uid, 0);
+    }
+
+    /** 消耗一次额外重开额度。 */
+    private void useReopenBudget(UUID uid) {
+        reopenUsed.merge(uid, 1, Integer::sum);
+    }
+
     /** 玩家显隐切换。 */
     public void setVisible(Player player, boolean visible) {
         plugin.prefs().setVisible(player.getUniqueId(), visible);
